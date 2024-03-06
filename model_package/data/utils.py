@@ -28,9 +28,9 @@ class SupervisedDataset(Dataset):
         return x, y
 
 
-def split_dataset(frac, dataset, seed):
+def split_dataset(train_frac, dataset, seed):
     """Split dataset in 2 in a reproducible way."""
-    size_first = int(frac * len(dataset))
+    size_first = int(train_frac * len(dataset))
     size_second = len(dataset) - size_first
     return random_split(
         dataset,
