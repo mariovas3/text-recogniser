@@ -45,6 +45,16 @@ def mock_dataset_creation(data_module_class) -> None:
     temp = vars(args)
     dataset.setup(temp["stage"])
     print(dataset)
+    if temp["stage"] == "fit":
+        dl = dataset.train_dataloader()
+    else:
+        dl = dataset.test_dataloader()
+    x, y = next(iter(dl))
+    print(f"x.shape: {x.shape}, y.shape: {y.shape}")
+    print(
+        f"x dtype, min, mean, max, std: {(x.dtype, x.min(), x.mean(), x.max(), x.std())}"
+    )
+    print(f"y dtype, min, max: {(y.dtype, y.min(), y.max())}")
 
 
 class BaseDataModule(LightningDataModule):
