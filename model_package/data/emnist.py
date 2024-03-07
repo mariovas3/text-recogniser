@@ -14,7 +14,7 @@ import metadata.emnist as metadata
 import numpy as np
 import requests
 import torchvision.transforms as T
-from data.lit_datamodule_abc import BaseDataModule, mock_dataset_creation
+from data.lit_datamodule_abc import BaseDataModule, mock_lit_dataset
 from data.utils import SupervisedDataset, split_dataset
 from project_utils import change_wd
 
@@ -107,8 +107,8 @@ def _truncate_dataset(x, y, metadata):
     for label in np.unique(a):
         # idxs of examples of class label;
         idxs = np.where(a == label)[0]
-        # shuffle and get first to_get items;
-        random.shuffle(a)
+        # shuffle and get first to_get idxs;
+        random.shuffle(idxs)
         to_get = min(med_count, len(idxs))
         # append first to_get idxs;
         all_sampled_idxs.append(idxs[:to_get])
@@ -196,4 +196,33 @@ def process_byclass_dataset(raw_file_dest, metadata):
 
 
 if __name__ == "__main__":
-    mock_dataset_creation(EMNIST)
+    import matplotlib.pyplot as plt
+
+    def test_plot(data_batch, batch_size):
+        to_show = min(49, batch_size)
+        for i in range(to_show):
+            x, y = next(data_batch)
+            plt.subplot(7, 7, i + 1)
+            plt.imshow(x.squeeze().numpy(), cmap="gray")
+            label = metadata.MAPPING[y.item()]
+            plt.title(label)
+            plt.axis("off")
+        plt.tight_layout()
+        plt.show()
+
+    emnist_dataset = mock_lit_dataset(EMNIST)
+    emnist_dataset.prepare_data()
+    temp = emnist_dataset.args
+    emnist_dataset.setup(temp["stage"])
+    print(emnist_dataset)
+    if temp["stage"] == "fit":
+        dl = iter(emnist_dataset.train_dataloader())
+    else:
+        dl = emnist_dataset.test_dataloader()
+    x, y = next(iter(dl))
+    print(f"x.shape: {x.shape}, y.shape: {y.shape}")
+    print(
+        f"x dtype, min, mean, max, std: {(x.dtype, x.min(), x.mean(), x.max(), x.std())}"
+    )
+    print(f"y dtype, min, max: {(y.dtype, y.min(), y.max())}")
+    test_plot(zip(x, y), temp["batch_size"])

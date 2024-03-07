@@ -29,10 +29,10 @@ if GPU_COUNT:
     DEFAULT_NUM_WORKERS //= GPU_COUNT
 
 
-def mock_dataset_creation(data_module_class) -> None:
+def mock_lit_dataset(lit_data_module) -> None:
     """Load EMNISTLines and print info."""
     parser = argparse.ArgumentParser()
-    data_module_class.add_to_argparse(parser)
+    lit_data_module.add_to_argparse(parser)
     parser.add_argument(
         "--stage",
         type=str,
@@ -40,21 +40,8 @@ def mock_dataset_creation(data_module_class) -> None:
         help="One of 'fit' or 'test'. Default is 'fit'.",
     )
     args = parser.parse_args()
-    dataset = data_module_class(args)
-    dataset.prepare_data()
-    temp = vars(args)
-    dataset.setup(temp["stage"])
-    print(dataset)
-    if temp["stage"] == "fit":
-        dl = dataset.train_dataloader()
-    else:
-        dl = dataset.test_dataloader()
-    x, y = next(iter(dl))
-    print(f"x.shape: {x.shape}, y.shape: {y.shape}")
-    print(
-        f"x dtype, min, mean, max, std: {(x.dtype, x.min(), x.mean(), x.max(), x.std())}"
-    )
-    print(f"y dtype, min, max: {(y.dtype, y.min(), y.max())}")
+    dataset = lit_data_module(args)
+    return dataset
 
 
 class BaseDataModule(LightningDataModule):
