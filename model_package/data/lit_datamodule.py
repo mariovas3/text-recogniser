@@ -5,18 +5,12 @@ Currently, supports distributed data parallel but not multi-node training.
 
 import argparse
 import os
-import sys
-from pathlib import Path
 
 import torch
 from lightning import LightningDataModule
 from torch.utils.data import DataLoader
 
-p = Path(__file__).absolute().parents[1]
-if str(p) not in sys.path:
-    sys.path.append(str(p))
-
-import metadata.shared as metadata
+import model_package.metadata.shared as metadata
 
 BATCH_SIZE = 128
 CALLING_THREAD_CPU_COUNT = len(os.sched_getaffinity(0))

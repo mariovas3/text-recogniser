@@ -1,22 +1,17 @@
 import json
 import random
 import shutil
-import sys
 import zipfile
-from pathlib import Path
-
-p = Path(__file__).absolute().parents[1]
-if str(p) not in sys.path:
-    sys.path.append(str(p))
 
 import h5py
-import metadata.emnist as metadata
 import numpy as np
 import requests
 import torchvision.transforms as T
-from data.lit_datamodule_abc import BaseDataModule, mock_lit_dataset
-from data.utils import SupervisedDataset, split_dataset
-from project_utils import change_wd
+
+import model_package.metadata.emnist as metadata
+from model_package.data.lit_datamodule import BaseDataModule, mock_lit_dataset
+from model_package.data.utils import SupervisedDataset, split_dataset
+from model_package.project_utils import change_wd
 
 
 class EMNIST(BaseDataModule):

@@ -1,12 +1,6 @@
-import sys
-from pathlib import Path
-
-p = Path(__file__).absolute().parent
-if str(p) not in sys.path:
-    sys.path.append(str(p))
 import string
 
-import shared
+from model_package.metadata import shared
 
 RAW_DATA_DIR = shared.DATA_DIR / "raw" / "emnist"
 RAW_FILENAME = "matlab.zip"
