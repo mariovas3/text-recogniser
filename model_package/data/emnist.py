@@ -37,6 +37,7 @@ class EMNIST(BaseDataModule):
     def setup(self, stage):
         if stage == "fit":
             with h5py.File(metadata.PROCESSED_FILE_PATH, "r") as f:
+                # x_train_and_val images have pixels in [0, 255];
                 self.x_train_and_val = f["x_train"][:]
                 self.y_train_and_val = f["y_train"][:].squeeze().astype(int)
 
