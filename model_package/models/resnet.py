@@ -7,6 +7,34 @@ ResNetParams = namedtuple(
 )
 
 
+def conv_dim_formula(
+    in_dim, final_out_channel, kernels, paddings, strides, dilations=None
+):
+    """
+    Calculate final shape after conv1d operation.
+
+    Args:
+        in_dim (int): input dimension.
+        final_out_channel (int): number of channels in output.
+        kernels (Sequence[int]): indexable seq of kernels.
+        paddings (Sequence[int]): indexable seq of padding on both sides.
+        strides (Sequence[int]): indexable seq of strides.
+        dilations (Sequence[int]): indexable seq of dilations.
+            If dilations is None, all dilations assumed to be 1.
+    """
+    assert len(kernels) == len(paddings) == len(strides)
+    if dilations is not None:
+        assert len(kernels) == len(dilations)
+
+    out = in_dim
+    for i in range(len(kernels)):
+        offset = 2 * paddings[i] - kernels[i]
+        if dilations is not None:
+            offset -= (kernels[i] - 1) * (dilations[i] - 1)
+        out = (out + offset) // strides[i] + 1
+    return (final_out_channel, out)
+
+
 class ResNetBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
         """
@@ -100,3 +128,15 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
+
+class ResNetClassifier(nn.Module):
+    def __init__(self, resnet, mlp):
+        """
+        Combine ResNet instance with MLP classification head.
+        """
+        super().__init__()
+        self.resnet, self.mlp = resnet, mlp
+
+    def forward(self, x):
+        return self.mlp(self.resnet(x))
