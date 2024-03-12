@@ -5,3 +5,4 @@ lightning==2.2.1
 h5py==3.10.0
 scipy==1.12.0
 nltk==3.8.1
+pytest==8.1.1
