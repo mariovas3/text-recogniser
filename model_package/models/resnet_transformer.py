@@ -4,8 +4,10 @@ from torch import nn
 from .resnet import ResNet
 from .transformer_utils import *
 
-TF_DIM = 16
-TF_FC_DIM = 32
+# this config overfits a single 64-sized batch
+# in 200 train steps with Adam lr=1e-3;
+TF_DIM = 64
+TF_FC_DIM = 128
 TF_DROPOUT = 0
 TF_NUM_LAYERS = 4
 TF_NHEAD = 4
@@ -52,6 +54,15 @@ class ResNetTransformer(nn.Module):
             num_layers=tf_num_layers,
             norm=nn.LayerNorm(self.d_model),
         )
+
+        # classification head;
+        # if the token embedding was used instead, we intuitively
+        # want the repr for the current token to be as close as
+        # possible to the correct next token - corresponding to
+        # wanting to learn an exact identity mapping;
+        # with a separate affine layer, we don't have
+        # the same constraint.
+        self.classifier = nn.Linear(self.d_model, self.num_classes)
 
     def forward(self, x):
         """
@@ -121,8 +132,8 @@ class ResNetTransformer(nn.Module):
         # TODO remove the assert below after ready to deploy;
         assert not out.isnan().any()
         # (B, num_classes, Sq)
-        # use the token embeddings to decode;
-        return torch.matmul(self.embedding.weight, out.transpose(-2, -1))
+        # use separate affine layer to decode;
+        return self.classifier(out).transpose(-2, -1)
 
     @staticmethod
     def add_to_argparse(parser):
