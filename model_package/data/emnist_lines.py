@@ -23,7 +23,7 @@ NUM_TEST = 2000
 
 
 class EMNISTLines(BaseDataModule):
-    def __init__(self, args):
+    def __init__(self, args=None):
         super().__init__(args)
         self.max_length = self.args.get("max_length", DEFAULT_MAX_LENGTH)
         self.min_overlap = self.args.get("min_overlap", DEFAULT_MIN_OVERLAP)

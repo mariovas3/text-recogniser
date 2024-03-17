@@ -1,23 +1,28 @@
+from itertools import chain
+
+import lightning as L
 import torch
+import torch.nn.functional as F
 from torch import nn
 
-from .resnet import ResNet, get_final_height_width
-from .transformer_utils import *
+from model_package.models.metrics import MyCharErrorRate
+from model_package.models.resnet import ResNet, get_final_height_width
+from model_package.models.transformer_utils import *
 
-# this config get 0 cer on a single 64-sized training batch
-# in 200 train steps with Adam lr=1e-3;
+# this config overfits a single 64-sized batch
+# EMNISTLines in 200 train steps with Adam lr=1e-3;
 TF_DIM = 64
 TF_FC_DIM = 128
 TF_DROPOUT = 0
 TF_NUM_LAYERS = 4
 TF_NHEAD = 4
+LR = 1e-3
 
 
-class ResNetTransformer(nn.Module):
-    """Same stuff as Attention is all you need; but encoder is a ResNet."""
-
+class LitResNetTransformer(L.LightningModule):
     def __init__(self, data_config, resnet_config, args=None):
         super().__init__()
+        self.save_hyperparameters()
         self.num_classes = len(data_config["idx_to_char"])
         self.input_dims = data_config["input_dims"]
         self.idx_to_char = data_config["idx_to_char"]
@@ -29,14 +34,25 @@ class ResNetTransformer(nn.Module):
 
         self.args = {} if args is None else vars(args)
         self.d_model = self.args.get("tf_dim", TF_DIM)
+        # the output channels of the resnet should equal the model dim;
+        assert resnet_config.out_channels[-1] == self.d_model
         tf_fc_dim = self.args.get("tf_fc_dim", TF_FC_DIM)
         tf_nhead = self.args.get("tf_nhead", TF_NHEAD)
         tf_dropout = self.args.get("tf_dropout", TF_DROPOUT)
         tf_num_layers = self.args.get("tf_num_layers", TF_NUM_LAYERS)
+        self.lr = self.args.get("lr", LR)
         self.with_enc_pos = self.args.get("with_enc_pos", False)
+
+        self.test_cer = MyCharErrorRate(
+            [self.padding_token, self.start_token, self.end_token]
+        )
+        self.val_cer = MyCharErrorRate(
+            [self.padding_token, self.start_token, self.end_token]
+        )
 
         # Encoder setup - RESNET;
         self.encoder = ResNet(resnet_config)
+        # position embeds for encoder didn't seem to matter;
         if self.with_enc_pos:
             h_out, w_out = get_final_height_width(
                 self.input_dims[-2], self.input_dims[-1], resnet_config
@@ -57,6 +73,7 @@ class ResNetTransformer(nn.Module):
                 norm_first=True,
             ),
             num_layers=tf_num_layers,
+            # apply norm on final output of decoder;
             norm=nn.LayerNorm(self.d_model),
         )
 
@@ -69,16 +86,31 @@ class ResNetTransformer(nn.Module):
         # the same constraint.
         self.classifier = nn.Linear(self.d_model, self.num_classes)
 
-    def forward(self, x):
-        """
-        Returns batch of output tokens idxs.
+    def configure_optimizers(self):
+        if self.with_enc_pos:
+            return torch.optim.Adam(
+                chain(
+                    self.encoder.parameters(),
+                    self.enc_pos_emb.parameters(),
+                    self.decoder.parameters(),
+                    self.embedding.parameters(),
+                    self.dec_pos_emb.parameters(),
+                    self.classifier.parameters(),
+                ),
+                lr=self.lr,
+            )
+        return torch.optim.Adam(
+            chain(
+                self.encoder.parameters(),
+                self.decoder.parameters(),
+                self.embedding.parameters(),
+                self.dec_pos_emb.parameters(),
+                self.classifier.parameters(),
+            ),
+            lr=self.lr,
+        )
 
-        Args:
-            x (torch.Tensor): Batch of images (B x self.input_dims).
-        Returns:
-            out (torch.Tensor): Greedily decoded token idxs in shape
-                (B, self.max_seq_length).
-        """
+    def forward(self, x):
         B = len(x)
         x = self.encode(x)
 
@@ -111,36 +143,89 @@ class ResNetTransformer(nn.Module):
             output_tokens[ind, Sq] = self.padding_token
         return output_tokens  # (B, Sq)
 
+    def _get_outs_loss(self, batch):
+        x, y = batch
+        x = self.encode(x)
+        # try predicting next token from current ones;
+        outs = self.decode(x, y[:, :-1])
+        # tried ignore_index=self.padding_token but got worse performance;
+        loss = F.cross_entropy(outs, y[:, 1:], reduction="mean")
+        return outs, loss
+
+    def training_step(self, batch, batch_idx):
+        _, loss = self._get_outs_loss(batch)
+        self.log(
+            "training/loss",
+            loss.item(),
+            logger=True,
+            on_epoch=True,
+            on_step=True,
+            prog_bar=True,
+        )
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        outs, loss = self._get_outs_loss(batch)
+        # get preds from logits;
+        outs = outs.argmax(-2)
+        cer = self.val_cer(outs, batch[-1])
+        m = {"validation/loss": loss.item(), "validation/cer": cer.item()}
+        self.log_dict(m, logger=True, on_epoch=True, prog_bar=True)
+        return outs
+
+    def test_step(self, batch, batch_idx):
+        outs, loss = self._get_outs_loss(batch)
+        cer = self.test_cer(outs.argmax(-2), batch[-1])
+        m = {"test/loss": loss.item(), "test/cer": cer.item()}
+        self.log_dict(m, logger=True, on_epoch=True, prog_bar=True)
+
+    def predict_step(self, batch, batch_idx):
+        return self(batch[0])
+
     def encode(self, x):
-        # self.encoder(x) gives shape (B, C_out, H_out, W_out)
-        # flatten to (B, C_out, H_out * W_out) and permute so get
-        # (B, H_out * W_out, C_out) - C_out is the model dim
-        # and H_out * W_out is S_k - seq length of keys;
+        """
+        Encodes image using ResNet encoder.
+
+        Args:
+            x: shape (B, C_in, H_in, W_in).
+
+        Returns:
+            Tensor of shape (B, S_mem, C_out) where S_mem = H_out * W_out
+            and C_out is equal to self.d_model.
+        """
         out = torch.flatten(self.encoder(x), 2).transpose(-2, -1)
         if self.with_enc_pos:
             return self.enc_pos_emb(out)
         return out
 
     def decode(self, memory, tgt):
-        # (B, S_q)
-        # True values are ignored in attention;
+        """
+        Does Transformer Decoder pass.
+
+        Args:
+            memory: tensor of shape (B, Sk, d_model), where
+                Sk = H_out * W_out and d_model = C_out holds.
+                These are the encoded images from the resnet.
+            tgt: tensor of shape (B, Sq) the query tokens.
+
+        Returns:
+            Tensor of shape (B, C, Sq), where C is the num classes.
+        """
+        # True values of mask are ignored;
         tgt_padding_mask = tgt == self.padding_token
 
-        # get tgt embeddings
+        # get tgt embeddings;
         tgt = self.dec_pos_emb(self.embedding(tgt))
         Sq = tgt.size(-2)
         tgt_mask = self.y_mask[:Sq, :Sq]
-        # (B, Sq, d_model)
+        # out is (B, Sq, d_model)
         out = self.decoder(
             tgt=tgt,
             memory=memory,
             tgt_mask=tgt_mask,
             tgt_key_padding_mask=tgt_padding_mask,
         )
-        # TODO remove the assert below after ready to deploy;
-        assert not out.isnan().any()
-        # (B, num_classes, Sq)
-        # use separate affine layer to decode;
+        # (B, Sq, d_model) -> (B, Sq, C) -> (B, C, Sq)
         return self.classifier(out).transpose(-2, -1)
 
     @staticmethod
@@ -150,6 +235,7 @@ class ResNetTransformer(nn.Module):
         parser.add_argument("--tf_dropout", type=float, default=TF_DROPOUT)
         parser.add_argument("--tf_num_layers", type=int, default=TF_NUM_LAYERS)
         parser.add_argument("--tf_nhead", type=int, default=TF_NHEAD)
+        parser.add_argument("--lr", type=float, default=LR)
         # model seemed to work without encoder pos embeds.
         parser.add_argument(
             "--with_enc_pos", action="store_true", default=False

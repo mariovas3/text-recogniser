@@ -7,15 +7,30 @@ ResNetParams = namedtuple(
 )
 
 
-def conv_dim_formula(
-    in_dim, final_out_channel, kernels, paddings, strides, dilations=None
-):
+def get_final_height_width(h_in, w_in, resnet_config):
+    K = len(resnet_config.kernel_sizes)
+    paddings = (1,) * K
+    h_out = conv_dim_formula(
+        h_in,
+        resnet_config.kernel_sizes,
+        paddings,
+        resnet_config.strides,
+    )
+    w_out = conv_dim_formula(
+        w_in,
+        resnet_config.kernel_sizes,
+        paddings,
+        resnet_config.strides,
+    )
+    return h_out, w_out
+
+
+def conv_dim_formula(in_dim, kernels, paddings, strides, dilations=None):
     """
-    Calculate final shape after conv1d operation.
+    Calculate final shape of in_dim after successive conv1d operations.
 
     Args:
         in_dim (int): input dimension.
-        final_out_channel (int): number of channels in output.
         kernels (Sequence[int]): indexable seq of kernels.
         paddings (Sequence[int]): indexable seq of padding on both sides.
         strides (Sequence[int]): indexable seq of strides.
@@ -32,7 +47,7 @@ def conv_dim_formula(
         if dilations is not None:
             offset -= (kernels[i] - 1) * (dilations[i] - 1)
         out = (out + offset) // strides[i] + 1
-    return (final_out_channel, out)
+    return out
 
 
 class ResNetBlock(nn.Module):
