@@ -167,10 +167,12 @@ class EMNISTLines(BaseDataModule):
         if stage == "fit":
             with h5py.File(train_file, "r") as f:
                 x_train = f["x_train"][:]
+                # cast to int important;
                 y_train = f["y_train"][:].astype(int)
 
             with h5py.File(val_file, "r") as f:
                 x_val = f["x_val"][:]
+                # cast to int important;
                 y_val = f["y_val"][:].astype(int)
 
             self.train_dataset = SupervisedDataset(
