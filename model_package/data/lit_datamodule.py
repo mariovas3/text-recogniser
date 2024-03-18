@@ -42,8 +42,9 @@ def mock_lit_dataset(lit_data_module) -> None:
         help="One of 'fit' or 'test'. Default is 'fit'.",
     )
     args = parser.parse_args()
-    dataset = lit_data_module(args)
-    return dataset
+    args = vars(args)
+    dataset = lit_data_module(**args)
+    return dataset, args
 
 
 class BaseDataModule(LightningDataModule):
@@ -73,13 +74,19 @@ class BaseDataModule(LightningDataModule):
     predict_dataloader - used by Trainer's predict() method.
     """
 
-    def __init__(self, args=None) -> None:
+    def __init__(
+        self,
+        batch_size=BATCH_SIZE,
+        num_workers=DEFAULT_NUM_WORKERS,
+        gpus=0,
+        **kwargs,
+    ) -> None:
         super().__init__()
-        self.args = {} if args is None else vars(args)
-        self.batch_size = self.args.get("batch_size", BATCH_SIZE)
-        self.num_workers = self.args.get("num_workers", DEFAULT_NUM_WORKERS)
-
-        self.on_gpu = bool(self.args.get("gpus", 0))
+        # ignore kwargs; only there to eat extra stuff
+        # from subclasses;
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.on_gpu = bool(gpus)
 
     @classmethod
     def data_dirname(cls):

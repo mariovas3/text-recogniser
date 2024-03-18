@@ -1,0 +1,89 @@
+# lightning.pytorch==2.2.1
+seed_everything: 0
+trainer:
+  accelerator: auto
+  strategy: auto
+  devices: auto
+  num_nodes: 1
+  precision: null
+  # get wandb logger;
+  logger:
+    class_path: lightning.pytorch.loggers.WandbLogger
+    init_args:
+      project: "EMNISTLines"
+      log_model: "all"
+      name: "local_run"
+  # get callbacks;
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: "validation/loss"
+        mode: "min"
+        save_top_k: 1
+        every_n_epochs: 50
+    - class_path: lightning.pytorch.callbacks.DeviceStatsMonitor
+    - class_path: model_package.lit_models.callbacks.LogPredsCallback
+  fast_dev_run: false
+  # set small num of max_epochs;
+  max_epochs: 4
+  min_epochs: null
+  max_steps: -1
+  min_steps: null
+  max_time: null
+  limit_train_batches: null
+  limit_val_batches: null
+  limit_test_batches: null
+  limit_predict_batches: null
+  overfit_batches: 0.0
+  val_check_interval: null
+  check_val_every_n_epoch: 1
+  num_sanity_val_steps: null
+  log_every_n_steps: null
+  enable_checkpointing: null
+  enable_progress_bar: null
+  enable_model_summary: null
+  accumulate_grad_batches: 1
+  gradient_clip_val: null
+  gradient_clip_algorithm: null
+  # make deterministic;
+  deterministic: true
+  benchmark: null
+  inference_mode: true
+  use_distributed_sampler: true
+  profiler: null
+  detect_anomaly: false
+  barebones: false
+  plugins: null
+  sync_batchnorm: false
+  reload_dataloaders_every_n_epochs: 0
+  default_root_dir: null
+model:
+  data_config:
+    idx_to_char: ["<BLANK>", "<START>", "<END>", "<PAD>", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "!", "\"", "#", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", ":", ";", "?"]
+    input_dims: [1, 28, 896]
+    # max_seq_length of model must be same as max_length of data;
+    max_seq_length: 32
+  resnet_config:
+    in_channels: [1, 4, 4, 8, 8, 16, 16, 32, 32]
+    out_channels: [4, 4, 8, 8, 16, 16, 32, 32, 64]
+    kernel_sizes: [5, 3, 3, 3, 3, 3, 3, 3, 3]
+    strides: [2, 1, 2, 1, 2, 1, 2, 1, 2]
+  tf_dim: 64
+  tf_fc_dim: 128
+  tf_nhead: 4
+  tf_dropout: 0
+  tf_num_layers: 4
+  lr: 0.001
+  with_enc_pos: false
+data:
+  max_length: 32
+  min_overlap: 0
+  max_overlap: 0.33
+  num_train: 10000
+  num_val: 2000
+  num_test: 2000
+  with_start_and_end_tokens: true
+  batch_size: 128
+  num_workers: 8
+  gpus: 0
+ckpt_path: null

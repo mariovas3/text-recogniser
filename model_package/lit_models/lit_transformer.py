@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+import model_package.metadata.emnist_lines as metadata
 from model_package.models.metrics import MyCharErrorRate
 from model_package.models.resnet import ResNet, get_final_height_width
 from model_package.models.transformer_utils import *
@@ -20,7 +21,18 @@ LR = 1e-3
 
 
 class LitResNetTransformer(L.LightningModule):
-    def __init__(self, data_config, resnet_config, args=None):
+    def __init__(
+        self,
+        data_config,
+        resnet_config,
+        tf_dim=TF_DIM,
+        tf_fc_dim=TF_FC_DIM,
+        tf_nhead=TF_NHEAD,
+        tf_dropout=TF_DROPOUT,
+        tf_num_layers=TF_NUM_LAYERS,
+        lr=LR,
+        with_enc_pos=False,
+    ):
         super().__init__()
         self.save_hyperparameters()
         self.num_classes = len(data_config["idx_to_char"])
@@ -31,17 +43,14 @@ class LitResNetTransformer(L.LightningModule):
         self.end_token = self.char_to_idx["<END>"]
         self.padding_token = self.char_to_idx["<PAD>"]
         self.max_seq_length = data_config["max_seq_length"]
+        assert self.max_seq_length * metadata.CHAR_WIDTH == self.input_dims[-1]
+        assert metadata.CHAR_HEIGHT == self.input_dims[-2]
 
-        self.args = {} if args is None else vars(args)
-        self.d_model = self.args.get("tf_dim", TF_DIM)
+        self.d_model = tf_dim
         # the output channels of the resnet should equal the model dim;
-        assert resnet_config.out_channels[-1] == self.d_model
-        tf_fc_dim = self.args.get("tf_fc_dim", TF_FC_DIM)
-        tf_nhead = self.args.get("tf_nhead", TF_NHEAD)
-        tf_dropout = self.args.get("tf_dropout", TF_DROPOUT)
-        tf_num_layers = self.args.get("tf_num_layers", TF_NUM_LAYERS)
-        self.lr = self.args.get("lr", LR)
-        self.with_enc_pos = self.args.get("with_enc_pos", False)
+        assert resnet_config["out_channels"][-1] == self.d_model
+        self.lr = lr
+        self.with_enc_pos = with_enc_pos
 
         self.test_cer = MyCharErrorRate(
             [self.padding_token, self.start_token, self.end_token]
@@ -230,6 +239,7 @@ class LitResNetTransformer(L.LightningModule):
 
     @staticmethod
     def add_to_argparse(parser):
+        # here only for testing purposes;
         parser.add_argument("--tf_dim", type=int, default=TF_DIM)
         parser.add_argument("--tf_fc_dim", type=int, default=TF_DIM)
         parser.add_argument("--tf_dropout", type=float, default=TF_DROPOUT)

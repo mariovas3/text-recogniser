@@ -23,17 +23,25 @@ NUM_TEST = 2000
 
 
 class EMNISTLines(BaseDataModule):
-    def __init__(self, args=None):
-        super().__init__(args)
-        self.max_length = self.args.get("max_length", DEFAULT_MAX_LENGTH)
-        self.min_overlap = self.args.get("min_overlap", DEFAULT_MIN_OVERLAP)
-        self.max_overlap = self.args.get("max_overlap", DEFAULT_MAX_OVERLAP)
-        self.num_train = self.args.get("num_train", NUM_TRAIN)
-        self.num_val = self.args.get("num_val", NUM_VAL)
-        self.num_test = self.args.get("num_test", NUM_TEST)
-        self.with_start_and_end_tokens = self.args.get(
-            "with_start_and_end_tokens", False
-        )
+    def __init__(
+        self,
+        max_length=DEFAULT_MAX_LENGTH,
+        min_overlap=DEFAULT_MIN_OVERLAP,
+        max_overlap=DEFAULT_MAX_OVERLAP,
+        num_train=NUM_TRAIN,
+        num_val=NUM_VAL,
+        num_test=NUM_TEST,
+        with_start_and_end_tokens=True,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.max_length = max_length
+        self.min_overlap = min_overlap
+        self.max_overlap = max_overlap
+        self.num_train = num_train
+        self.num_val = num_val
+        self.num_test = num_test
+        self.with_start_and_end_tokens = with_start_and_end_tokens
 
         self.idx_to_char = metadata.MAPPING
         self.char_to_idx = {c: i for i, c in enumerate(metadata.MAPPING)}
@@ -306,12 +314,11 @@ if __name__ == "__main__":
         plt.tight_layout()
         plt.show()
 
-    emnist_lines_dataset = mock_lit_dataset(EMNISTLines)
+    emnist_lines_dataset, args = mock_lit_dataset(EMNISTLines)
     emnist_lines_dataset.prepare_data()
-    temp = emnist_lines_dataset.args
-    emnist_lines_dataset.setup(temp["stage"])
+    emnist_lines_dataset.setup(args["stage"])
     print(emnist_lines_dataset)
-    if temp["stage"] == "fit":
+    if args["stage"] == "fit":
         dl = iter(emnist_lines_dataset.train_dataloader())
     else:
         dl = emnist_lines_dataset.test_dataloader()
@@ -321,4 +328,5 @@ if __name__ == "__main__":
         f"x dtype, min, mean, max, std: {(x.dtype, x.min(), x.mean(), x.max(), x.std())}"
     )
     print(f"y dtype, min, max: {(y.dtype, y.min(), y.max())}")
-    test_plot(zip(x, y), temp["batch_size"])
+    print(f"batch_size: {args['batch_size']}")
+    test_plot(zip(x, y), args["batch_size"])

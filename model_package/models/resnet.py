@@ -1,26 +1,30 @@
-from collections import namedtuple
-
 from torch import nn
 
-ResNetParams = namedtuple(
-    "ResNetParams", "in_channels,out_channels,kernel_sizes,strides"
+# this config is default to pair up with transformer decoder
+# works well to get cer=0 on single 64-sized batch after
+# 200 steps and lr=1e-3.
+RESNET_CONFIG = dict(
+    in_channels=[1, 4, 4, 8, 8, 16, 16, 32, 32],
+    out_channels=[4, 4, 8, 8, 16, 16, 32, 32, 64],
+    kernel_sizes=[5, 3, 3, 3, 3, 3, 3, 3, 3],
+    strides=[2, 1, 2, 1, 2, 1, 2, 1, 2],
 )
 
 
-def get_final_height_width(h_in, w_in, resnet_config):
-    K = len(resnet_config.kernel_sizes)
+def get_final_height_width(h_in, w_in, resnet_config: dict):
+    K = len(resnet_config["kernel_sizes"])
     paddings = (1,) * K
     h_out = conv_dim_formula(
         h_in,
-        resnet_config.kernel_sizes,
+        resnet_config["kernel_sizes"],
         paddings,
-        resnet_config.strides,
+        resnet_config["strides"],
     )
     w_out = conv_dim_formula(
         w_in,
-        resnet_config.kernel_sizes,
+        resnet_config["kernel_sizes"],
         paddings,
-        resnet_config.strides,
+        resnet_config["strides"],
     )
     return h_out, w_out
 
@@ -112,7 +116,7 @@ class ResNetBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, res_block_config):
+    def __init__(self, resnet_config):
         """
         Sequential application of ResNetBlock modules.
 
@@ -120,21 +124,21 @@ class ResNet(nn.Module):
         """
         super().__init__()
         self.net = nn.Sequential()
-        for i in range(len(res_block_config.in_channels)):
+        for i in range(len(resnet_config["in_channels"])):
             self.net.add_module(
                 f"ResBlock_{i}",
                 ResNetBlock(
-                    in_channels=res_block_config.in_channels[i],
-                    out_channels=res_block_config.out_channels[i],
-                    kernel_size=res_block_config.kernel_sizes[i],
-                    stride=res_block_config.strides[i],
+                    in_channels=resnet_config["in_channels"][i],
+                    out_channels=resnet_config["out_channels"][i],
+                    kernel_size=resnet_config["kernel_sizes"][i],
+                    stride=resnet_config["strides"][i],
                 ),
             )
-            if i < len(res_block_config.in_channels) - 1:
+            if i < len(resnet_config["in_channels"]) - 1:
                 self.net.add_module(
                     f"BN2d_{i}",
                     nn.BatchNorm2d(
-                        num_features=res_block_config.out_channels[i],
+                        num_features=resnet_config["out_channels"][i],
                         affine=True,
                         track_running_stats=False,
                     ),

@@ -22,8 +22,8 @@ class EMNIST(BaseDataModule):
     10 classes for digits and 2 * 26 classes for letters.
     """
 
-    def __init__(self, args=None) -> None:
-        super().__init__(args)
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.idx_to_char = metadata.MAPPING
         self.char_to_idx = {c: i for i, c in enumerate(self.idx_to_char)}
         self.transform = T.ToTensor()
@@ -206,12 +206,11 @@ if __name__ == "__main__":
         plt.tight_layout()
         plt.show()
 
-    emnist_dataset = mock_lit_dataset(EMNIST)
+    emnist_dataset, args = mock_lit_dataset(EMNIST)
     emnist_dataset.prepare_data()
-    temp = emnist_dataset.args
-    emnist_dataset.setup(temp["stage"])
+    emnist_dataset.setup(args["stage"])
     print(emnist_dataset)
-    if temp["stage"] == "fit":
+    if args["stage"] == "fit":
         dl = iter(emnist_dataset.train_dataloader())
     else:
         dl = emnist_dataset.test_dataloader()
@@ -221,4 +220,5 @@ if __name__ == "__main__":
         f"x dtype, min, mean, max, std: {(x.dtype, x.min(), x.mean(), x.max(), x.std())}"
     )
     print(f"y dtype, min, max: {(y.dtype, y.min(), y.max())}")
-    test_plot(zip(x, y), temp["batch_size"])
+    print(f"batch_size: {args['batch_size']}")
+    test_plot(zip(x, y), args["batch_size"])
