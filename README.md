@@ -15,12 +15,13 @@ on many aspects:
 	* In the fsdl repo they set the `ignore_index=self.padding_token` in the cross entropy loss, which seems to lead to worse performance, so I removed that.
 
 ## TODO
-* TODO: Currently `data_config` is an arg of the `lit_transformer` constructor. Currently it is configured in the yaml file. I shoult figure out how to do sth like `--data=SomeDataModule` and then the model should get a `data_config` dynamically for that dataset. I think there was some `run=False` arg in the `LightningCLI`, maybe look into that.
 * TODO: The EMNIST website broke their link <a href="http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/matlab.zip">http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/matlab.zip</a> and now it doesn't lead to the matlab.zip file, but to some html. I have the zip file locally so should figure out where to upload it so I can download it quicker and more reliably.
 
 ## Progress:
 * I tested the lit transformer manually to overfit a single batch and reach zero character error rate on it. That worked. 
 * The `overfit_batches=1` using the lightning Trainer seems to use a different validation batch than the training batch so you only overfit the training batch and not necessarily the validation batch. There are a bunch of issues on GH about the functionality, seems quite contraversial to some people requesting all kinds of functionalities.
+* Managed to enforce equal arg vals for `data.max_length` and `model.max_seq_length` via `link_arguments` of `jsonargparse`. Similarly made the model receive `input_dims` as arg to constructor after `data.input_dims` is set when `data` is instantiated (again with the `link_arguments` `jsonargparse` command).
+* Also made the `ModelCheckpoint` callback configurable in the `training/run_experiment.py` script via the `my_model_checkpoint` name in the cli.
 
 ## Running experiments:
 > TODO: The EMNIST website broke their link <a href="http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/matlab.zip">http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/matlab.zip</a> and now it doesn't lead to the matlab.zip file, but to some html. I have the zip file locally so should figure out where to upload it so I can download it quicker and more reliably.
@@ -30,5 +31,5 @@ on many aspects:
 * Fourth, run `export WANDB_START_METHOD="thread"` otherwise some weird threading exception occurs. For more info see this <a href="https://github.com/wandb/wandb/issues/3223#issuecomment-1032820724">issue</a>.
 * Then run what you wanna run:
 	```bash
-	$ python training/run_experiment.py fit --config emnistlines_experiment_config --trainer.overfit_batches=1 --trainer.max_epochs=200 --trainer.every_n_epochs=100 --data.batch_size=64
+	$ python training/run_experiment.py fit --config emnistlines_experiment_config --trainer.overfit_batches=1 --trainer.max_epochs=200 --trainer.check_val_every_n_epochs=50 --data.batch_size=64
 	```

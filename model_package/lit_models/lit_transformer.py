@@ -5,7 +5,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-import model_package.metadata.emnist_lines as metadata
 from model_package.models.metrics import MyCharErrorRate
 from model_package.models.resnet import ResNet, get_final_height_width
 from model_package.models.transformer_utils import *
@@ -23,7 +22,9 @@ LR = 1e-3
 class LitResNetTransformer(L.LightningModule):
     def __init__(
         self,
-        data_config,
+        idx_to_char,
+        input_dims,
+        max_seq_length,
         resnet_config,
         tf_dim=TF_DIM,
         tf_fc_dim=TF_FC_DIM,
@@ -35,16 +36,14 @@ class LitResNetTransformer(L.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.num_classes = len(data_config["idx_to_char"])
-        self.input_dims = data_config["input_dims"]
-        self.idx_to_char = data_config["idx_to_char"]
+        self.num_classes = len(idx_to_char)
+        self.input_dims = input_dims
+        self.idx_to_char = idx_to_char
         self.char_to_idx = {c: i for i, c in enumerate(self.idx_to_char)}
         self.start_token = self.char_to_idx["<START>"]
         self.end_token = self.char_to_idx["<END>"]
         self.padding_token = self.char_to_idx["<PAD>"]
-        self.max_seq_length = data_config["max_seq_length"]
-        assert self.max_seq_length * metadata.CHAR_WIDTH == self.input_dims[-1]
-        assert metadata.CHAR_HEIGHT == self.input_dims[-2]
+        self.max_seq_length = max_seq_length
 
         self.d_model = tf_dim
         # the output channels of the resnet should equal the model dim;

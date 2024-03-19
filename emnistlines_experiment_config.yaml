@@ -1,5 +1,20 @@
 # lightning.pytorch==2.2.1
 seed_everything: 0
+my_model_checkpoint:
+  dirpath: null
+  filename: null
+  monitor: validation/loss
+  verbose: false
+  save_last: null
+  save_top_k: 1
+  save_weights_only: false
+  mode: min
+  auto_insert_metric_name: true
+  every_n_train_steps: null
+  train_time_interval: null
+  every_n_epochs: 50
+  save_on_train_epoch_end: null
+  enable_version_counter: true
 trainer:
   accelerator: auto
   strategy: auto
@@ -15,12 +30,6 @@ trainer:
       name: "local_run"
   # get callbacks;
   callbacks:
-    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
-      init_args:
-        monitor: "validation/loss"
-        mode: "min"
-        save_top_k: 1
-        every_n_epochs: 50
     - class_path: lightning.pytorch.callbacks.DeviceStatsMonitor
     - class_path: model_package.lit_models.callbacks.LogPredsCallback
   fast_dev_run: false
@@ -58,11 +67,9 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
   default_root_dir: null
 model:
-  data_config:
-    idx_to_char: ["<BLANK>", "<START>", "<END>", "<PAD>", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "!", "\"", "#", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", ":", ";", "?"]
-    input_dims: [1, 28, 896]
-    # max_seq_length of model must be same as max_length of data;
-    max_seq_length: 32
+  idx_to_char: ["<BLANK>", "<START>", "<END>", "<PAD>", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "!", "\"", "#", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", ":", ";", "?"]
+  # the input_dims and max_seq_length depend on the datamodule
+  # and are handled by jsonargparse.link_arguments
   resnet_config:
     in_channels: [1, 4, 4, 8, 8, 16, 16, 32, 32]
     out_channels: [4, 4, 8, 8, 16, 16, 32, 32, 64]
