@@ -33,3 +33,11 @@ on many aspects:
 	```bash
 	$ python training/run_experiment.py fit --config emnistlines_experiment_config --trainer.overfit_batches=1 --trainer.max_epochs=200 --trainer.check_val_every_n_epochs=50 --data.batch_size=64
 	```
+* To e.g., continue the training for another 200 epochs, just set the `--trainer.max_epochs=400` and provide a `--ckpt_path` value like so:
+	```bash
+	$ python training/run_experiment.py fit --config emnistlines_experiment_config --trainer.overfit_batches=1 --trainer.max_epochs=400 --trainer.check_val_every_n_epochs=50 --data.batch_size=64 --ckpt_path='PathToCkpt'
+	```
+* To run the `test` subcommand, do:
+	```bash
+	python training/run_experiment.py test --config emnistlines_experiment_config.yaml --data.batch_size=64 --ckpt_path='PathToCkpt'
+	```
