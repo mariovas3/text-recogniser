@@ -1,3 +1,6 @@
+from typing import Any
+
+from lightning import LightningModule, Trainer
 from lightning.pytorch.callbacks import Callback
 
 import wandb
@@ -37,3 +40,13 @@ class LogPredsCallback(Callback):
             wandb_logger.log_table(
                 key="sample_table", columns=columns, data=data
             )
+
+
+class SetLoggerWatch(Callback):
+    def on_train_batch_start(
+        self, trainer, pl_module, batch, batch_idx
+    ) -> None:
+        if hasattr(trainer, "start_logging"):
+            if trainer.start_logging:
+                trainer.logger.watch(pl_module)
+                trainer.start_logging = False

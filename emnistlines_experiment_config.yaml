@@ -31,6 +31,7 @@ trainer:
   # get callbacks;
   callbacks:
     - class_path: lightning.pytorch.callbacks.DeviceStatsMonitor
+    # - class_path: model_package.lit_models.callbacks.SetLoggerWatch
     - class_path: model_package.lit_models.callbacks.LogPredsCallback
   fast_dev_run: false
   # set small num of max_epochs;

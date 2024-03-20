@@ -10,6 +10,11 @@ from lightning.pytorch.loggers import Logger
 from model_package.data.emnist_lines import EMNISTLines
 from model_package.lit_models.lit_transformer import LitResNetTransformer
 
+# class MyTrainer(L.Trainer):
+#     def __init__(self, *args, **kwargs):
+#         self.start_logging = True
+#         super().__init__(*args, **kwargs)
+
 
 class MyLitCLI(LightningCLI):
     def add_arguments_to_parser(self, parser: LightningArgumentParser) -> None:
@@ -44,6 +49,7 @@ def main():
     cli = MyLitCLI(
         model_class=LitResNetTransformer,
         datamodule_class=EMNISTLines,
+        # trainer_class=MyTrainer,
         save_config_callback=LoggerSaveConfigCallback,
         seed_everything_default=0,
         parser_kwargs={"parser_mode": "omegaconf"},
