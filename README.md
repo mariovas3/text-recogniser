@@ -41,3 +41,8 @@ on many aspects:
 	```bash
 	python training/run_experiment.py test --config emnistlines_experiment_config.yaml --data.batch_size=64 --ckpt_path='PathToCkpt'
 	```
+
+## Google Drive API setup (for hosting data):
+* Follow instructions <a href="https://developers.google.com/drive/api/quickstart/python">here</a>.
+* You download the object as `io.BytesIO` and then call the `getvalue()` on it and save it as binary file with `open(file_path, 'wb')`.
+* You download a file from google drive based on the file id which can be found by copying the sharable link of the file in the google drive gui and the long, weird sequence of chars in the link is the file id.

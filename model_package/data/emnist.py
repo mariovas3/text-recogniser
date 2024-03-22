@@ -5,13 +5,12 @@ import zipfile
 
 import h5py
 import numpy as np
-import requests
 import torchvision.transforms as T
 
 import model_package.metadata.emnist as metadata
 from model_package.data.lit_datamodule import BaseDataModule, mock_lit_dataset
 from model_package.data.utils import SupervisedDataset, split_dataset
-from model_package.project_utils import change_wd
+from model_package.project_utils import change_wd, download_raw_dataset
 
 
 class EMNIST(BaseDataModule):
@@ -64,29 +63,10 @@ class EMNIST(BaseDataModule):
 
 
 def _download_and_process_emnist(metadata):
-    raw_file_dest = _download_raw_dataset(
+    raw_file_dest = download_raw_dataset(
         metadata.RAW_URL, metadata.RAW_DATA_DIR, metadata.RAW_FILENAME
     )
     process_byclass_dataset(raw_file_dest, metadata)
-
-
-def _download_raw_dataset(url, save_destination_dir, save_as_filename):
-    # skip mkdir if exists, otherwise also create parents;
-    save_destination_dir.mkdir(parents=True, exist_ok=True)
-    full_name = save_destination_dir / save_as_filename
-    if full_name.exists():
-        print(f"\nFILE ALREADY EXISTS!\n{full_name}")
-        return full_name
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(full_name, "wb") as file:
-            file.write(response.content)
-        print(f"file downloaded successfully to {full_name}")
-        return full_name
-    print(
-        f"Failed download of {full_name}! status code: {response.status_code}"
-    )
-    return full_name
 
 
 def _truncate_dataset(x, y, metadata):
@@ -192,7 +172,15 @@ def process_byclass_dataset(raw_file_dest, metadata):
 
 
 if __name__ == "__main__":
+    import random
+
     import matplotlib.pyplot as plt
+    import numpy as np
+    import torch
+
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
 
     def test_plot(data_batch, batch_size):
         to_show = min(49, batch_size)

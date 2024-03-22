@@ -77,7 +77,7 @@ class EMNISTLines(BaseDataModule):
             help=f"Max overlap between chars in between 0 and 1. Default is {DEFAULT_MAX_OVERLAP}",
         )
         parser.add_argument(
-            "--with_start_and_end_tokens", action="store_true", default=False
+            "--with_start_and_end_tokens", action="store_true", default=True
         )
         return parser
 
@@ -300,15 +300,25 @@ def convert_strings_to_labels(
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
+    import random
 
-    def test_plot(data_batch, batch_size):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import torch
+
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
+
+    def test_plot(data_batch, batch_size, min_idx=0):
         to_show = min(10, batch_size)
         for i in range(to_show):
             x, y = next(data_batch)
             plt.subplot(10, 1, i + 1)
             plt.imshow(x.squeeze().numpy(), cmap="gray")
-            label = "".join([metadata.MAPPING[idx.item()] for idx in y])
+            label = "".join(
+                [metadata.MAPPING[idx.item()] for idx in y if idx >= min_idx]
+            )
             plt.title(label)
             plt.axis("off")
         plt.tight_layout()
@@ -329,4 +339,4 @@ if __name__ == "__main__":
     )
     print(f"y dtype, min, max: {(y.dtype, y.min(), y.max())}")
     print(f"batch_size: {args['batch_size']}")
-    test_plot(zip(x, y), args["batch_size"])
+    test_plot(zip(x, y), args["batch_size"], min_idx=4)

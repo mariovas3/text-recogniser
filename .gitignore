@@ -1,1 +1,5 @@
 *__pycache__
+google_drive_credentials.json
+token.json
+data/raw/iam/metadata.toml
+*.zip
