@@ -5,12 +5,13 @@ import zipfile
 
 import h5py
 import numpy as np
+import toml
 import torchvision.transforms as T
 
 import model_package.metadata.emnist as metadata
 from model_package.data.lit_datamodule import BaseDataModule, mock_lit_dataset
 from model_package.data.utils import SupervisedDataset, split_dataset
-from model_package.project_utils import change_wd, download_raw_dataset
+from model_package.project_utils import change_wd, download_from_google_drive
 
 
 class EMNIST(BaseDataModule):
@@ -28,10 +29,11 @@ class EMNIST(BaseDataModule):
         self.transform = T.ToTensor()
         self.input_dims = metadata.DIMS
         self.output_dims = metadata.OUTPUT_DIMS
+        self.toml_metadata = toml.load(metadata.TOML_FILE)
 
     def prepare_data(self) -> None:
         if not metadata.PROCESSED_FILE_PATH.exists():
-            _download_and_process_emnist(metadata)
+            _download_and_process_emnist(self.toml_metadata, metadata)
 
     def setup(self, stage):
         if stage == "fit":
@@ -62,14 +64,16 @@ class EMNIST(BaseDataModule):
         return f"EMNIST dataset with {len(self.idx_to_char)} classes and shape is {self.input_dims}.\n"
 
 
-def _download_and_process_emnist(metadata):
-    raw_file_dest = download_raw_dataset(
-        metadata.RAW_URL, metadata.RAW_DATA_DIR, metadata.RAW_FILENAME
+def _download_and_process_emnist(toml_metadata, metadata):
+    zipped_file_dest = download_from_google_drive(
+        toml_metadata["google_drive_id"],
+        metadata.DL_DIR,
+        toml_metadata["filename"],
     )
-    process_byclass_dataset(raw_file_dest, metadata)
+    process_byclass_dataset(zipped_file_dest, metadata)
 
 
-def _truncate_dataset(x, y, metadata):
+def _rebalance_dataset(x, y, metadata):
     """Limit samples per class to the median count of instances per class."""
     # bincount counts all numbers from 0, ... to max_number;
     # since we offset the labels by NUM_SPECIAL_TOKENS, the first
@@ -92,13 +96,13 @@ def _truncate_dataset(x, y, metadata):
     return x[all_sampled_idxs], y[all_sampled_idxs]
 
 
-def process_byclass_dataset(raw_file_dest, metadata):
-    dirname = raw_file_dest.parent
-    filename = str(raw_file_dest).split("/")[-1]
+def process_byclass_dataset(zipped_file_dest, metadata):
+    dirname = zipped_file_dest.parent
+    filename = str(zipped_file_dest).split("/")[-1]
     PROCESSED_DATA_DIR = metadata.PROCESSED_DATA_DIR
     PROCESSED_DATA_FILE = metadata.PROCESSED_DATA_FILE
     NUM_SPECIAL_TOKENS = metadata.NUM_SPECIAL_TOKENS
-    TRUNCATE_DATASET = metadata.TRUNCATE_DATASET
+    REBALANCE_DATASET = metadata.REBALANCE_DATASET
 
     print("Extracting emnist-byclass.mat")
     with change_wd(dirname):
@@ -130,10 +134,10 @@ def process_byclass_dataset(raw_file_dest, metadata):
 
         # the dataset is unbalanced, so make each class have
         # at most the median instance count per class;
-        if TRUNCATE_DATASET:
+        if REBALANCE_DATASET:
             print("Make max count per class the median of counts...")
-            x_train, y_train = _truncate_dataset(x_train, y_train, metadata)
-            x_test, y_test = _truncate_dataset(x_test, y_test, metadata)
+            x_train, y_train = _rebalance_dataset(x_train, y_train, metadata)
+            x_test, y_test = _rebalance_dataset(x_test, y_test, metadata)
 
         # save to hdfs format, should be space efficient;
         print("Saving to HDFS in a compressed format...")

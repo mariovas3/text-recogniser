@@ -2,7 +2,10 @@
 wandb
 notebooks
 lightning_logs
-data
+data/downloaded
+data/processed
+data/corpora
+data/raw
 google_drive_credentials.json
 token.json
 data/raw/iam/metadata.toml
