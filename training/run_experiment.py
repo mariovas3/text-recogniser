@@ -10,10 +10,13 @@ from lightning.pytorch.loggers import Logger
 from model_package.data.emnist_lines import EMNISTLines
 from model_package.lit_models.lit_transformer import LitResNetTransformer
 
+# <start> hacky way to get wandb to watch grads in a thread safe way;
+# look at the callbacks.py/SetLoggerWatch callback for this.
 # class MyTrainer(L.Trainer):
 #     def __init__(self, *args, **kwargs):
 #         self.start_logging = True
 #         super().__init__(*args, **kwargs)
+# <end> hacky way to get wandb to watch grads in a thread safe way;
 
 
 class MyLitCLI(LightningCLI):
@@ -49,7 +52,9 @@ def main():
     cli = MyLitCLI(
         model_class=LitResNetTransformer,
         datamodule_class=EMNISTLines,
+        # <start> hacky way to get wandb to watch grads in a thread safe way;
         # trainer_class=MyTrainer,
+        # <end> hacky way to get wandb to watch grads in a thread safe way;
         save_config_callback=LoggerSaveConfigCallback,
         seed_everything_default=0,
         parser_kwargs={"parser_mode": "omegaconf"},

@@ -31,7 +31,10 @@ trainer:
   # get callbacks;
   callbacks:
     - class_path: lightning.pytorch.callbacks.DeviceStatsMonitor
+    # <start> hacky way to get wandb to watch grads in a thread safe way;
+    # look at run_experiment.py/MyTrainer class;
     # - class_path: model_package.lit_models.callbacks.SetLoggerWatch
+    # <end> hacky way to get wandb to watch grads in a thread safe way;
     - class_path: model_package.lit_models.callbacks.LogPredsCallback
   fast_dev_run: false
   # set small num of max_epochs;

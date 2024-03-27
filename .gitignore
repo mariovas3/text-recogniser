@@ -1,4 +1,8 @@
 *__pycache__
+wandb
+notebooks
+lightning_logs
+data
 google_drive_credentials.json
 token.json
 data/raw/iam/metadata.toml
