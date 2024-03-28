@@ -21,8 +21,11 @@ The project itself is fairly comprehensive and offers a lot of learning:
 	* The credentials for the google drive api should live in the root directory as `token.json` or if the token has expired, flow credentials in the same directory under the name of `google_drive_credentials.json` should exist.
 	* The google drive download function is available in the <a href="./model_package/project_utils.py">project utils file</a>.
 
-## TODO
-* TODO: The EMNIST website broke their link <a href="http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/matlab.zip">http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/matlab.zip</a> and now it doesn't lead to the `matlab.zip` file, but to some html. I have the zip file locally so should set up google drive download similar to the IAM dataset.
+## TODO:
+
+## Maintainer notes:
+* If bumping the version of python support to 3.12 and above, I could swap the use of `boltons.cacheutils.cachedproperty` for `functools.cached_property`. Currently I'm aiming to support python 3.11, which still uses the old version of `functools.cached_property` which has <a href="https://discuss.python.org/t/finding-a-path-forward-for-functools-cached-property/23757">tricky locking</a> in multithreaded apps, so will use the `boltons` version for now.
+* For parsing `xml`, I currently use <a href="https://pypi.org/project/defusedxml">defusedxml</a> since the standard lib can be vulnerable to some bad `xml`.
 
 ## Progress:
 * I tested the lit transformer manually to overfit a single batch and reach zero character error rate on it. That worked.
@@ -31,7 +34,6 @@ The project itself is fairly comprehensive and offers a lot of learning:
 * Made the `ModelCheckpoint` callback configurable in the `training/run_experiment.py` script via the `my_model_checkpoint` name in the cli (by subclassing the `LightningCLI`).
 
 ## Running experiments:
-> TODO: The EMNIST website broke their link <a href="http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/matlab.zip">http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/matlab.zip</a> and now it doesn't lead to the matlab.zip file, but to some html. I have the zip file locally so should figure out where to upload it so I can download it quicker and more reliably.
 * First `cd` in the root of the repo (parent of `model_package`).
 * Second, run `export PYTHONPATH=.` - to add the current directory to `sys.path`.
 * Third, run `wandb login` to login to the wandb with your api key.

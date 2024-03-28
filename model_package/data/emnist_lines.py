@@ -11,7 +11,10 @@ import model_package.metadata.emnist_lines as metadata
 from model_package.data.emnist import EMNIST
 from model_package.data.lit_datamodule import BaseDataModule, mock_lit_dataset
 from model_package.data.sentence_generator import SentenceGenerator
-from model_package.data.utils import SupervisedDataset
+from model_package.data.utils import (
+    SupervisedDataset,
+    convert_strings_to_labels,
+)
 
 DEFAULT_MAX_LENGTH = 32
 DEFAULT_MIN_OVERLAP = 0
@@ -278,25 +281,6 @@ def get_image_for_string_label(
             sample = zero_image
         sampled_imgs_by_char[char] = sample.reshape(*char_shape)
     return [sampled_imgs_by_char[char] for char in string_label]
-
-
-def convert_strings_to_labels(
-    strings, char_to_idx, length, with_start_and_end_tokens
-):
-    """Make each string into array of idxs based on char_to_idx mapping."""
-    # init all as pad idxs;
-    labels = (
-        np.ones((len(strings), length), dtype=np.uint8) * char_to_idx["<PAD>"]
-    )
-    for i, s in enumerate(strings):
-        tokens = list(s)
-        # tokens guaranteed to be at most length-2 long;
-        # so we can add start and end tokens;
-        if with_start_and_end_tokens:
-            tokens = ["<START>", *tokens, "<END>"]
-        for ii, token in enumerate(tokens):
-            labels[i, ii] = char_to_idx[token]
-    return labels
 
 
 if __name__ == "__main__":

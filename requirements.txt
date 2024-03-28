@@ -16,3 +16,7 @@ google-api-python-client==2.123.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.0
 toml==0.10.2
+boltons==23.1.1
+defusedxml==0.7.1
+# like python's open but for large files; nice for working with aws, gcp, azure without useless boilerplate from the sdks;
+smart-open==7.0.4
