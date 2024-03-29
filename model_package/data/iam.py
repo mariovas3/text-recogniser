@@ -61,7 +61,7 @@ class IAM:
         """Get dictionary from form name to path to form."""
         # f is path/to/form/formname.jpg
         # f.stem is f"{formname}"
-        return {f.stem for f in self.form_filenames}
+        return {f.stem: f for f in self.form_filenames}
 
     def load_image(self, form_id):
         image = utils.read_image_pil(
