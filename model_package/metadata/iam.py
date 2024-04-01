@@ -11,3 +11,10 @@ ZIPPED_FILENAME = "fsdl_downsampled_iam_forms.zip"
 DOWNSAMPLE_FACTOR = 2
 # add this many pixels around the exact coordinates;
 LINE_REGION_PADDING = 8
+MAX_LINE_HEIGHT = 60
+
+# these are the total counts if no filtering done;
+# TOTAL_IMAGES = 1539
+# TOTAL_TEST_IMAGES = 232
+# TOTAL_PARAGRAPHS = 1539
+# TOTAL_LINES = 13353

@@ -27,6 +27,17 @@ The project itself is fairly comprehensive and offers a lot of learning:
 * If bumping the version of python support to 3.12 and above, I could swap the use of `boltons.cacheutils.cachedproperty` for `functools.cached_property`. Currently I'm aiming to support python 3.11, which still uses the old version of `functools.cached_property` which has <a href="https://discuss.python.org/t/finding-a-path-forward-for-functools-cached-property/23757">tricky locking</a> in multithreaded apps, so will use the `boltons` version for now.
 * For parsing `xml`, I currently use <a href="https://pypi.org/project/defusedxml">defusedxml</a> since the standard lib can be vulnerable to some bad `xml`.
 
+## Notes on IAM data:
+* I found issues at the level of the IAM database. A few authours of forms have written in all-caps undermining the case sensitive nature of the labels. These forms will be discarded in my project. Examples of all-caps forms are:
+
+	```python
+	['g07-000a', 'g07-003a', 'f07-101a', 'g07-007a', 'g01-022']
+	```
+* As another heuristic to filter out bad lines from the handwritten part of the forms I only retain lines, whose text is found in the machine-written part of the form. For instance some authours have also written stuff like "Sentence Database             P02-109" and then horizontal lines and then the content they were actually supposed to write. My heuristic will only keep the lines they were supposed to write (the machine-written part).
+	* Example of bad form is: `p02-109`.
+* By following the fsdl recipe for getting line regions, I also found a few bad forms where the lines overlap too much resulting in the image being of 2 lines but the label is still the text of the first line only; forcing the algorithm to somehow ignore the second line of text from the image. To deal with this, I limited the line height to `y1` coord `+ metadata.MAX_LINE_HEIGHT`. This seems to have worked.
+	* Example of this behaviour is line at index 8 in form `r02-060`. The "f"'s overlap so line stop carries to the next line.
+
 ## Progress:
 * I tested the lit transformer manually to overfit a single batch and reach zero character error rate on it. That worked.
 * The `overfit_batches=1` using the lightning Trainer seems to use a different validation batch than the training batch so you only overfit the training batch and not necessarily the validation batch. There are a bunch of issues on GH about the functionality, seems quite contraversial to some people requesting all kinds of functionalities.

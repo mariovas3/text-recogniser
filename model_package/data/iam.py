@@ -35,6 +35,7 @@ class IAM:
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.toml_metadata = toml.load(metadata.TOML_FILE)
+        self.skipped_lines = 0
 
     @property
     def xml_filenames(self) -> List[Path]:
@@ -70,13 +71,32 @@ class IAM:
         return ImageOps.invert(image)
 
     @cachedproperty
+    def machine_string_by_id(self):
+        return {
+            f.stem: _get_machine_string_from_xml(f) for f in self.xml_filenames
+        }
+
+    @cachedproperty
     def all_ids(self) -> set[str]:
-        """A set of all form IDs."""
-        return {f.stem for f in self.xml_filenames}
+        """
+        A set of all non-ignored form IDs.
+
+        should be at most:
+        ls iamdb/forms -1 | wc -l
+        which is 1539; ids of bad forms are ignored.
+        """
+        return {file_id for file_id in self.line_strings_by_id}
 
     @cachedproperty
     def test_ids(self) -> set[str]:
-        return _get_form_ids(metadata.EXTRACTED_DATA_DIR / "task/testset.txt")
+        """
+        should be at most:
+        cat iamdb/task/testset.txt | cut -f 1,2 -d - | uniq | wc -l
+        which is 232 since truncate the last '-'-separated element;
+        otherwise `wc -l iamdb/task/testset.txt` gives 1861 as per lwitlrt task;
+        """
+        ans = _get_form_ids(metadata.EXTRACTED_DATA_DIR / "task/testset.txt")
+        return ans.intersection(self.all_ids)
 
     @cachedproperty
     def validation_ids(self) -> set[str]:
@@ -88,7 +108,7 @@ class IAM:
                 metadata.EXTRACTED_DATA_DIR / "task/validationset2.txt"
             )
         )
-        return val_ids
+        return val_ids.intersection(self.all_ids)
 
     @cachedproperty
     def train_ids(self) -> set[str]:
@@ -106,10 +126,19 @@ class IAM:
 
     @cachedproperty
     def line_strings_by_id(self):
-        return {
-            f.stem: _get_line_strings_from_xml_file(f)
-            for f in self.xml_filenames
-        }
+        """
+        Return a dict from fileid to list of strings of handwritten lines.
+
+        Strings of handwritten lines not found in machine part will be ignored.
+        """
+        ans = {}
+        for f in self.xml_filenames:
+            valid_line_strings = _get_line_strings_from_xml_file(
+                f, self.machine_string_by_id[f.stem]
+            )
+            if len(valid_line_strings) > 0:
+                ans[f.stem] = valid_line_strings
+        return ans
 
     @cachedproperty
     def paragraph_string_by_id(self):
@@ -122,17 +151,22 @@ class IAM:
     def line_regions_by_id(self):
         """
         Return a dict of form_id to list of dicts of x1,y1,x2,y2 coords of lines.
+
+        Regions of handwritten lines not found in machine part will be ignored.
         """
-        return {
-            f.stem: _get_line_regions_from_xml_file(f)
-            for f in self.xml_filenames
-        }
+        ans = {}
+        for f in self.xml_filenames:
+            valid_line_regions = _get_line_regions_from_xml_file(
+                f, self.machine_string_by_id[f.stem]
+            )
+            if len(valid_line_regions):
+                ans[f.stem] = valid_line_regions
+        return ans
 
     @cachedproperty
     def paragraph_regions_by_id(self):
         ans = {}
         for form_id, line_coords in self.line_regions_by_id.items():
-            assert not form_id in ans
             for i, coords in enumerate(line_coords):
                 if i == 0:
                     # copies a dict[str, int] so no need for deep copies;
@@ -146,24 +180,24 @@ class IAM:
 
     def __repr__(self):
         info = ["IAM Dataset Info:"]
-        # should be equal to:
-        # ls iamdb/forms -1 | wc -l
-        # which is 1539
-        info.append(f"Total Images: {len(self.xml_filenames)}")
-        # should be equal to:
-        # cat iamdb/task/testset.txt | cut -f 1,2 -d - | uniq | wc -l
-        # which is 232 since truncate the las '-'-separated element;
-        # otherwise `wc -l iamdb/task/testset.txt` gives 1861 as per lwitlrt task;
+        info.append(f"Total Images: {len(self.all_ids)}")
         info.append(f"Total Test Images: {len(self.test_ids)}")
-        # same as num forms - 1539;
+        # at most same as num forms - 1539;
         info.append(f"Total Paragraphs: {len(self.paragraph_string_by_id)}")
-        # should give 13353, same as in the "Characteristics" section
+        # should give at most 13353, same as in the "Characteristics" section
         # on the IAM website;
+        # in out case we ignore bad forms so might get fewer lines;
         num_lines = sum(
             len(lines) for _, lines in self.line_strings_by_id.items()
         )
         info.append(f"Total Lines: {num_lines}")
         return "\n\t".join(info)
+
+
+def _get_machine_string_from_xml(xml_file):
+    root = ElementTree.parse(xml_file).getroot()
+    machine_lines = root.findall("machine-printed-part/machine-print-line")
+    return " ".join([el.attrib["text"] for el in machine_lines])
 
 
 def _get_coords_of_xml_element(xml_element, xml_path):
@@ -182,7 +216,11 @@ def _get_coords_of_xml_element(xml_element, xml_path):
             ans["x1"] = int(el.attrib["x"])
             ans["y1"] = int(el.attrib["y"])
             ans["x2"] = int(el.attrib["x"]) + int(el.attrib["width"])
-            ans["y2"] = int(el.attrib["y"]) + int(el.attrib["height"])
+            # limit the height of the line;
+            ans["y2"] = min(
+                int(el.attrib["y"]) + int(el.attrib["height"]),
+                ans["y1"] + 2 * metadata.MAX_LINE_HEIGHT,
+            )
         else:
             ans["x1"] = min(ans["x1"], int(el.attrib["x"]))
             ans["y1"] = min(ans["y1"], int(el.attrib["y"]))
@@ -190,7 +228,14 @@ def _get_coords_of_xml_element(xml_element, xml_path):
                 ans["x2"], int(el.attrib["x"]) + int(el.attrib["width"])
             )
             ans["y2"] = max(
-                ans["y2"], int(el.attrib["y"]) + int(el.attrib["height"])
+                ans["y2"],
+                # found some issues with overlapping lines e.g.,
+                # in file_id 'r02-060'
+                # line at idx 8 overlaps with line at idx 9;
+                min(
+                    int(el.attrib["y"]) + int(el.attrib["height"]),
+                    ans["y1"] + 2 * metadata.MAX_LINE_HEIGHT,
+                ),
             )
     # downsample accordingly;
     return {
@@ -203,11 +248,13 @@ def _get_hw_line_xml_elements(xml_file_path):
     return root.findall("handwritten-part/line")
 
 
-def _get_line_regions_from_xml_file(xml_file_path):
+def _get_line_regions_from_xml_file(xml_file_path, valid_string):
     xml_line_elements = _get_hw_line_xml_elements(xml_file_path)
     coords_of_lines = [
         _get_coords_of_xml_element(line_ele, "word/cmp")
         for line_ele in xml_line_elements
+        # ignore some bad lines;
+        if line_ele.attrib["text"] in valid_string
     ]
     # next_line_region["y1"] - prev_line_region["y2"] < 0 possible due to overlapping characters
     line_gaps_y = [
@@ -232,11 +279,13 @@ def _get_line_regions_from_xml_file(xml_file_path):
     ]
 
 
-def _get_line_strings_from_xml_file(xml_file_path) -> list[str]:
+def _get_line_strings_from_xml_file(xml_file_path, valid_string) -> list[str]:
     """Return list of strings for each handwritten line in a form."""
     xml_line_elements = _get_hw_line_xml_elements(xml_file_path)
     return [
-        el.attrib["text"].replace("&quot;", '"') for el in xml_line_elements
+        el.attrib["text"].replace("&quot;", '"')
+        for el in xml_line_elements
+        if el.attrib["text"] in valid_string
     ]
 
 
