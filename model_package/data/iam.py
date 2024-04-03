@@ -18,18 +18,35 @@ class IAM:
     as keys for dictonaries returning label and
     image crop region data, and more.
 
-    Our task: Large Writer Independent Text Line Recognition Task (LWITLRT)
-        Has 9862 text lines.
-        This task consists of a total number of 9'862 text lines.
-        It provides one training, one testing, and two validation sets.
-        The text lines of all data sets are mutually exclusive, thus each
-        writer has contributed to one set only.
+    In this class we care about extracting line-level data from
+    the IAM forms. Based on these lines we are also able to build
+    paragraphs, which is what we ultimately train on.
 
-        The validation sets have been merged into the train set.
-        The train set has 7,101 lines from 326 writers.
-        The test set has 1,861 lines from 128 writers.
-        The text lines of all data sets are mutually exclusive,
-            thus each writer has contributed to one set only.
+    There are a bunch of issues and quirks with extracting lines,
+    better described in the project README.
+
+    In summary:
+        - I added a heuristic for limiting the line height
+            otherwise we can get images that capture two
+            lines but are matched with a text label only
+            for the first line.
+        - Some handwritten text is incorectly copied. E.g., in form
+            p02-109 the author has also included the
+            'Sentence Database         P02-109' header and has
+            drawn horizontal lines that surround the actual machine part
+            that they were supposed to write. As a result I have also
+            extracted the machine part in a cached attribute and only
+            include handwritten parts that are found in the machine part
+            to ignore bad lines.
+        - In some forms (5 in total), e.g., g07-000a, the author has
+            written in all caps. This is essentially a false label
+            since the handwritten text doesn't match the machine part.
+            These forms contribute 0 lines and are omitted, therefore.
+            This reduces the total number of forms by 5 to 1534/1539.
+            - Due to the membership check of handwritten lines in
+                machine part, we also get fewer lines - 12664/13353.
+                This is not too bad provided the data are higher quality
+                and can help make more higher quality synthetic data.
     """
 
     def __init__(self, **kwargs) -> None:
@@ -44,6 +61,7 @@ class IAM:
 
     def prepare_data(self) -> None:
         if self.xml_filenames:
+            print("XML FILES FOR IAM FOUND! SKIPPING prepare_data call...")
             return
         zipped_file = download_from_google_drive(
             self.toml_metadata["google_drive_id"],
@@ -115,6 +133,14 @@ class IAM:
         return self.all_ids.difference(
             self.validation_ids.union(self.test_ids)
         )
+
+    @cachedproperty
+    def ids_by_split(self):
+        return {
+            "train": self.train_ids,
+            "val": self.validation_ids,
+            "test": self.test_ids,
+        }
 
     @cachedproperty
     def split_by_id(self):
@@ -238,6 +264,13 @@ def _get_coords_of_xml_element(xml_element, xml_path):
                 ),
             )
     # downsample accordingly;
+    # the assert below is not guaranteed because y1 can decrease
+    # its value, but y2 can only increase its value, so for a fixed
+    # y2, we can increase effective height by decreasing y1;
+    # in essence this MAX_LINE_HEIGHT trick only protects us
+    # from overshooting due to el.attrib[y] + el.attrib[height]
+    # in buggy annotations of forms;
+    # assert ans["y2"] - ans["y1"] <= 2 * metadata.MAX_LINE_HEIGHT, f"y2: {ans['y2']}, y1: {ans['y1']}"
     return {
         key: value // metadata.DOWNSAMPLE_FACTOR for key, value in ans.items()
     }

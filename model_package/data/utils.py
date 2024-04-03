@@ -9,6 +9,19 @@ from torch.utils.data import Dataset, random_split
 from model_package.project_utils import change_wd
 
 
+def resize_crop(crop: Image, new_width, new_height):
+    # crop is PIL.image of dtype="L" (so values range from 0 -> 255)
+    image = Image.new("L", (new_width, new_height))
+
+    # Resize crop;
+    cur_width, cur_height = crop.size
+    new_crop_width = int(cur_width * (new_height / cur_height))
+    assert new_crop_width <= new_width
+    crop = crop.resize((new_crop_width, new_height), resample=Image.BILINEAR)
+    image.paste(crop)
+    return image
+
+
 class SupervisedDataset(Dataset):
     def __init__(
         self,
@@ -47,21 +60,23 @@ def split_dataset(train_frac, dataset, seed):
 
 
 def convert_strings_to_labels(
-    strings, char_to_idx, length, with_start_and_end_tokens
+    strings, char_to_idx, length, with_start_and_end_tokens: bool
 ):
     """Make each string into array of idxs based on char_to_idx mapping."""
     # init all as pad idxs;
     labels = (
         np.ones((len(strings), length), dtype=np.uint8) * char_to_idx["<PAD>"]
     )
+    offset = int(with_start_and_end_tokens)
     for i, s in enumerate(strings):
         tokens = list(s)
         # tokens guaranteed to be at most length-2 long;
         # so we can add start and end tokens;
-        if with_start_and_end_tokens:
-            tokens = ["<START>", *tokens, "<END>"]
         for ii, token in enumerate(tokens):
-            labels[i, ii] = char_to_idx[token]
+            labels[i, ii + offset] = char_to_idx[token]
+        if with_start_and_end_tokens:
+            labels[i, 0] = char_to_idx["<START>"]
+            labels[i, ii + offset + 1] = char_to_idx["<END>"]
     return labels
 
 

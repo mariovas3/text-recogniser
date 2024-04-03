@@ -35,8 +35,22 @@ The project itself is fairly comprehensive and offers a lot of learning:
 	```
 * As another heuristic to filter out bad lines from the handwritten part of the forms I only retain lines, whose text is found in the machine-written part of the form. For instance some authours have also written stuff like "Sentence Database             P02-109" and then horizontal lines and then the content they were actually supposed to write. My heuristic will only keep the lines they were supposed to write (the machine-written part).
 	* Example of bad form is: `p02-109`.
-* By following the fsdl recipe for getting line regions, I also found a few bad forms where the lines overlap too much resulting in the image being of 2 lines but the label is still the text of the first line only; forcing the algorithm to somehow ignore the second line of text from the image. To deal with this, I limited the line height to `y1` coord `+ metadata.MAX_LINE_HEIGHT`. This seems to have worked.
+* By following the fsdl recipe for getting line regions, I also found a few bad forms where the lines overlap too much resulting in the image being of 2 lines but the label is still the text of the first line only; forcing the algorithm to somehow ignore the second line of text from the image. To deal with this, I limited the `y2` coord to the `min` of  `y1 + metadata.MAX_LINE_HEIGHT` and `el.attrib['y'] + el.attrib['height']`.
+	* Empirically, this gave max height line of `119` pixels. This is even though `metadata.MAX_LINE_HEIGHT=60`. This is because the line height increases not only due to increase in `y2` (which we address with this heuristic) but also due to decreases in `y1` (which we don't control). Nevertheless, I did some checks and didn't find instances of two lines in an image anymore.
 	* Example of this behaviour is line at index 8 in form `r02-060`. The "f"'s overlap so line stop carries to the next line.
+* We always work with grayscale colourmapping. Throughout the codebase there might be some misterious `'L'` arguments passed to `PIL` functions. This stands for Luminance according to <a href="https://stackoverflow.com/questions/52307290/what-is-the-difference-between-images-in-p-and-l-mode-in-pil">this</a> stack overflow post and only stores grayscale.
+	* Also remember that PIL has `(width, height)` layout in contrast to most arrays.
+### Notes on IAMLines data:
+* I save the line crops as resized to height of `28` similar to the NIST data.
+	```python
+	h = crop.size[-1]
+	crop.resize(
+		(
+			int(d / (h / 28)) for d in crop.size
+		),
+		resample=Image.BILINEAR
+	)
+	```
 
 ## Progress:
 * I tested the lit transformer manually to overfit a single batch and reach zero character error rate on it. That worked.
