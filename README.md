@@ -41,6 +41,7 @@ The project itself is fairly comprehensive and offers a lot of learning:
 * We always work with grayscale colourmapping. Throughout the codebase there might be some misterious `'L'` arguments passed to `PIL` functions. This stands for Luminance according to <a href="https://stackoverflow.com/questions/52307290/what-is-the-difference-between-images-in-p-and-l-mode-in-pil">this</a> stack overflow post and only stores grayscale.
 	* Also remember that PIL has `(width, height)` layout in contrast to most arrays.
 ### Notes on IAMLines data:
+* I only keep handwritten lines whose annotated text matches the machine text to be copied by the author of the form.
 * I save the line crops as resized to height of `28` similar to the NIST data.
 	```python
 	h = crop.size[-1]
@@ -50,6 +51,21 @@ The project itself is fairly comprehensive and offers a lot of learning:
 		),
 		resample=Image.BILINEAR
 	)
+	```
+### Notes on IAMParagraphs data:
+* The default way fsdl get the paragraph data is to just get the crop from the top line to the bottom line of a form. Since I found some forms that have bad lines in between good lines, this will not work because you will get an image that has the bad line but it won't be reflected in the string label.
+	* Since I will be working also with synthetic paragraphs, I chose to ignore paragraphs where the bad lines are in the middle which results in about 400 skipped forms in total.
+	* This is not that big of a problem since my lines data should be high quality so I can stich more synthetic paragraphs together. The important thing is to get hight quality data that match their labels.
+* Similarly to the IAMLines data, I resize the paragraph crops so I have 28 pixels of height per line:
+
+	```python
+	def resize_to_pix_per_line(img, num_lines, pix=28):
+		h = img.size[-1]
+		scale_factor = h / (pix * num_lines)
+		return img.resize(
+			(int(d / scale_factor) for d in img.size),
+			resample=Image.BILINEAR
+		)
 	```
 
 ## Progress:

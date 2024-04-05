@@ -270,7 +270,7 @@ if __name__ == "__main__":
         dl = iter(iam_lines_dataset.train_dataloader())
     else:
         dl = iter(iam_lines_dataset.test_dataloader())
-    x, y = next(iter(dl))
+    x, y = next(dl)
     print(f"x.shape: {x.shape}, y.shape: {y.shape}")
     print(
         f"x dtype, min, mean, max, std: {(x.dtype, x.min(), x.mean(), x.max(), x.std())}"

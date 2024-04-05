@@ -2,11 +2,11 @@
 Currently, supports distributed data parallel but not multi-node training.
 
 Torch docs about pin_memory in DataLoader:
-    "It is generally not recommended to return CUDA tensors 
-    in multi-process loading because of many subtleties in 
-    using CUDA and sharing CUDA tensors in multiprocessing 
-    (see CUDA in multiprocessing). Instead, we recommend 
-    using automatic memory pinning (i.e., setting pin_memory=True), 
+    "It is generally not recommended to return CUDA tensors
+    in multi-process loading because of many subtleties in
+    using CUDA and sharing CUDA tensors in multiprocessing
+    (see CUDA in multiprocessing). Instead, we recommend
+    using automatic memory pinning (i.e., setting pin_memory=True),
     which enables fast data transfer to CUDA-enabled GPUs."
 """
 
@@ -31,7 +31,7 @@ if GPU_COUNT:
     DEFAULT_NUM_WORKERS //= GPU_COUNT
 
 
-def mock_lit_dataset(lit_data_module) -> None:
+def mock_lit_dataset(lit_data_module):
     """Load EMNISTLines and print info."""
     parser = argparse.ArgumentParser()
     lit_data_module.add_to_argparse(parser)

@@ -22,6 +22,14 @@ def resize_crop(crop: Image, new_width, new_height):
     return image
 
 
+def resize_to_pix_per_line(img, num_lines, pix=28):
+    h = img.size[-1]
+    scale_factor = h / (pix * num_lines)
+    return img.resize(
+        (int(d / scale_factor) for d in img.size), resample=Image.BILINEAR
+    )
+
+
 class SupervisedDataset(Dataset):
     def __init__(
         self,

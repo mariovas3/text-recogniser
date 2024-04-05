@@ -167,10 +167,34 @@ class IAM:
         return ans
 
     @cachedproperty
+    def ignore_paragraph_ids(self) -> set[str]:
+        """
+        Return set of iam form ids to ignore.
+
+        Some forms have lines whose text differs from the
+        machine-written text and these lines are in between good
+        lines. I choose to ignore such lines for the IAMLines
+        dataset. For the IAMParagraphs, I choose to ignore
+        the whole paragraph if such lines are present. This
+        is easier than surgically removing bad lines from the
+        image crops.
+
+        This set of bad ids also includes forms all of whose
+        lines are ignored e.g., because the author wrote in
+        all caps and thus didn't match the machine code.
+        """
+        return {
+            f.stem
+            for f in self.xml_filenames
+            if has_bad_in_the_middle(f, self.machine_string_by_id[f.stem])
+        }
+
+    @cachedproperty
     def paragraph_string_by_id(self):
         return {
             form_id: "\n".join(lines)
             for form_id, lines in self.line_strings_by_id.items()
+            if form_id not in self.ignore_paragraph_ids
         }
 
     @cachedproperty
@@ -193,6 +217,8 @@ class IAM:
     def paragraph_regions_by_id(self):
         ans = {}
         for form_id, line_coords in self.line_regions_by_id.items():
+            if form_id in self.ignore_paragraph_ids:
+                continue
             for i, coords in enumerate(line_coords):
                 if i == 0:
                     # copies a dict[str, int] so no need for deep copies;
@@ -218,6 +244,30 @@ class IAM:
         )
         info.append(f"Total Lines: {num_lines}")
         return "\n\t".join(info)
+
+
+def has_bad_in_the_middle(xml_file, valid_string):
+    """True if all lines are bad or bad line in between good lines."""
+    xml_line_elements = _get_hw_line_xml_elements(xml_file)
+    latest = None
+    flag = True
+    for i, line_ele in enumerate(xml_line_elements):
+        if line_ele.attrib["text"] in valid_string:
+            if latest is not None:
+                return True
+            flag = False
+        else:
+            # everything from first line up to now is invalid;
+            # this is fine since can remove lines from top;
+            if flag:
+                continue
+            # found a bad line after had found a good line;
+            # if all lines after this bad line are also bad
+            # this is fine since can also remove lines from bottom
+            # of form;
+            if latest is None:
+                latest = i
+    return flag
 
 
 def _get_machine_string_from_xml(xml_file):
