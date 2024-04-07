@@ -44,7 +44,7 @@ The project itself is fairly comprehensive and offers a lot of learning:
 * I save the line crops as resized to height of `28` similar to the NIST data.
 	```python
 	h = crop.size[-1]
-	crop.resize(
+	crop = crop.resize(
 		(
 			int(d / (h / 28)) for d in crop.size
 		),

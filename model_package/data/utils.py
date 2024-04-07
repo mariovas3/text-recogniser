@@ -9,13 +9,29 @@ from torch.utils.data import Dataset, random_split
 from model_package.project_utils import change_wd
 
 
+def hstack_line_crops(line_crops, h_pad=0):
+    H, W = 0, 0
+    for _ in line_crops:
+        w, h = _.size
+        H += h + h_pad
+        if w > W:
+            W = w
+
+    out = Image.new("L", (W, H))
+    curr_h = 0
+    for crop in line_crops:
+        out.paste(crop, box=(0, curr_h))
+        curr_h += crop.size[-1] + h_pad
+    return out
+
+
 def resize_crop(crop: Image, new_width, new_height):
     # crop is PIL.image of dtype="L" (so values range from 0 -> 255)
     image = Image.new("L", (new_width, new_height))
 
     # Resize crop;
     cur_width, cur_height = crop.size
-    new_crop_width = int(cur_width * (new_height / cur_height))
+    new_crop_width = round(cur_width * (new_height / cur_height))
     assert new_crop_width <= new_width
     crop = crop.resize((new_crop_width, new_height), resample=Image.BILINEAR)
     image.paste(crop)
@@ -26,7 +42,7 @@ def resize_to_pix_per_line(img, num_lines, pix=28):
     h = img.size[-1]
     scale_factor = h / (pix * num_lines)
     return img.resize(
-        (int(d / scale_factor) for d in img.size), resample=Image.BILINEAR
+        (round(d / scale_factor) for d in img.size), resample=Image.BILINEAR
     )
 
 

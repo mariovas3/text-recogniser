@@ -78,7 +78,7 @@ class IAMLines(BaseDataModule):
             metadata.PROCESSED_DATA_DIR / "_max_aspect_ratio.txt"
         ) as file:
             max_aspect_ratio = float(file.read())
-            max_crop_width = int(metadata.IMAGE_HEIGHT * max_aspect_ratio)
+            max_crop_width = round(metadata.IMAGE_HEIGHT * max_aspect_ratio)
             assert (
                 max_crop_width <= metadata.IMAGE_WIDTH
             ), f"max_crop_width: {max_crop_width}, max_allowed: {metadata.IMAGE_WIDTH}"
@@ -198,8 +198,9 @@ def generate_line_crops_and_labels(iam: IAM, split: str):
             )
             # resize to a height of 28 to save memory;
             h = crop.size[-1]
-            crop.resize(
-                (int(d / (h / 28)) for d in crop.size), resample=Image.BILINEAR
+            crop = crop.resize(
+                (round(d / (h / 28)) for d in crop.size),
+                resample=Image.BILINEAR,
             )
             crops.append(crop)
     assert len(crops) == len(labels)
