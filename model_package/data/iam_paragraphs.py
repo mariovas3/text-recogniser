@@ -200,8 +200,6 @@ def get_paragraph_crops_and_labels(iam: IAM, split: str, pix=28):
     crops = {}
     labels = {}
     for iam_id in iam.ids_by_split[split]:
-        if iam_id in iam.ignore_paragraph_ids:
-            continue
         image = iam.load_image(iam_id)
         region = iam.paragraph_regions_by_id[iam_id]
         crops[iam_id] = image.crop(

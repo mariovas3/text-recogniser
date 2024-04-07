@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 import toml
 from boltons.cacheutils import cachedproperty
@@ -18,7 +17,7 @@ class IAM:
     as keys for dictonaries returning label and
     image crop region data, and more.
 
-    In this class we care about extracting line-level data from
+    We care about extracting line-level data from
     the IAM forms. Based on these lines we are also able to build
     paragraphs, which is what we ultimately train on.
 
@@ -34,29 +33,29 @@ class IAM:
             p02-109 the author has also included the
             'Sentence Database         P02-109' header and has
             drawn horizontal lines that surround the actual machine part
-            that they were supposed to write. As a result I have also
-            extracted the machine part in a cached attribute and only
-            include handwritten parts that are found in the machine part
-            to ignore bad lines.
+            that they were supposed to write. To deal with this,
+            I get lines starting from the first line that occurred in
+            the machine part and ending at the first line from bottom
+            to top that occurred in the machine part.
+            - Since the machine part is itself inconsistent in its
+                use of hyphons at the end of machine lines, I don't
+                do a strict check for all handwritten lines to occur
+                in the machine part. The assumption is that the first
+                handwritten ones should occur though.
         - In some forms (5 in total), e.g., g07-000a, the author has
-            written in all caps. This is essentially a false label
-            since the handwritten text doesn't match the machine part.
-            These forms contribute 0 lines and are omitted, therefore.
-            This reduces the total number of forms by 5 to 1534/1539.
-            - Due to the membership check of handwritten lines in
-                machine part, we also get fewer lines - 12664/13353.
-                This is not too bad provided the data are higher quality
-                and can help make more higher quality synthetic data.
+            written in all caps. This doesn't match the given machine
+            part annotation, but I just uppercase it and procede as
+            for the other forms.
+            - All 5 all-caps forms are in the training set.
     """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.toml_metadata = toml.load(metadata.TOML_FILE)
-        self.skipped_lines = 0
 
     @property
-    def xml_filenames(self) -> List[Path]:
-        """A list of the filenames of all .xml files, which contain label information."""
+    def xml_filenames(self) -> list[Path]:
+        """A list of paths to .xml files."""
         return list((metadata.EXTRACTED_DATA_DIR / "xml").glob("*.xml"))
 
     def prepare_data(self) -> None:
@@ -72,12 +71,12 @@ class IAM:
 
     @property
     def form_filenames(self):
-        """Get list of paths to form jpg files."""
+        """A list of paths to form .jpg files."""
         return list((metadata.EXTRACTED_DATA_DIR / "forms").glob("*.jpg"))
 
     @property
     def form_filenames_by_id(self):
-        """Get dictionary from form name to path to form."""
+        """A dictionary from form id to path of form."""
         # f is path/to/form/formname.jpg
         # f.stem is f"{formname}"
         return {f.stem: f for f in self.form_filenames}
@@ -153,48 +152,30 @@ class IAM:
     @cachedproperty
     def line_strings_by_id(self):
         """
-        Return a dict from fileid to list of strings of handwritten lines.
+        Return a dict from file id to list of strings of handwritten lines.
 
-        Strings of handwritten lines not found in machine part will be ignored.
+        Start from first line that occurrs in the relevant machine
+        part and end at first line, bottom to top, that occurs in
+        the machine part.
         """
         ans = {}
         for f in self.xml_filenames:
+            validation_string = self.machine_string_by_id[f.stem]
+            # uppercase the validation string for the all caps forms;
+            if f.stem in metadata.ALL_CAPS_FORM_IDS:
+                validation_string = validation_string.upper()
             valid_line_strings = _get_line_strings_from_xml_file(
-                f, self.machine_string_by_id[f.stem]
+                f, validation_string
             )
-            if len(valid_line_strings) > 0:
+            if valid_line_strings:
                 ans[f.stem] = valid_line_strings
         return ans
-
-    @cachedproperty
-    def ignore_paragraph_ids(self) -> set[str]:
-        """
-        Return set of iam form ids to ignore.
-
-        Some forms have lines whose text differs from the
-        machine-written text and these lines are in between good
-        lines. I choose to ignore such lines for the IAMLines
-        dataset. For the IAMParagraphs, I choose to ignore
-        the whole paragraph if such lines are present. This
-        is easier than surgically removing bad lines from the
-        image crops.
-
-        This set of bad ids also includes forms all of whose
-        lines are ignored e.g., because the author wrote in
-        all caps and thus didn't match the machine code.
-        """
-        return {
-            f.stem
-            for f in self.xml_filenames
-            if has_bad_in_the_middle(f, self.machine_string_by_id[f.stem])
-        }
 
     @cachedproperty
     def paragraph_string_by_id(self):
         return {
             form_id: "\n".join(lines)
             for form_id, lines in self.line_strings_by_id.items()
-            if form_id not in self.ignore_paragraph_ids
         }
 
     @cachedproperty
@@ -202,14 +183,20 @@ class IAM:
         """
         Return a dict of form_id to list of dicts of x1,y1,x2,y2 coords of lines.
 
-        Regions of handwritten lines not found in machine part will be ignored.
+        Start from first line that occurs in the relevant machine
+        part and end at first line, bottom to top, that occurs in
+        the machine part.
         """
         ans = {}
         for f in self.xml_filenames:
+            validation_string = self.machine_string_by_id[f.stem]
+            # make validation string all caps for all-caps forms;
+            if f.stem in metadata.ALL_CAPS_FORM_IDS:
+                validation_string = validation_string.upper()
             valid_line_regions = _get_line_regions_from_xml_file(
-                f, self.machine_string_by_id[f.stem]
+                f, validation_string
             )
-            if len(valid_line_regions):
+            if valid_line_regions:
                 ans[f.stem] = valid_line_regions
         return ans
 
@@ -217,8 +204,6 @@ class IAM:
     def paragraph_regions_by_id(self):
         ans = {}
         for form_id, line_coords in self.line_regions_by_id.items():
-            if form_id in self.ignore_paragraph_ids:
-                continue
             for i, coords in enumerate(line_coords):
                 if i == 0:
                     # copies a dict[str, int] so no need for deep copies;
@@ -233,41 +218,19 @@ class IAM:
     def __repr__(self):
         info = ["IAM Dataset Info:"]
         info.append(f"Total Images: {len(self.all_ids)}")
+        info.append(f"Total Train Images: {len(self.train_ids)}")
+        info.append(f"Total Val Images: {len(self.validation_ids)}")
         info.append(f"Total Test Images: {len(self.test_ids)}")
         # at most same as num forms - 1539;
         info.append(f"Total Paragraphs: {len(self.paragraph_string_by_id)}")
         # should give at most 13353, same as in the "Characteristics" section
         # on the IAM website;
-        # in out case we ignore bad forms so might get fewer lines;
+        # in out case we ignore bad lines so might get fewer lines;
         num_lines = sum(
             len(lines) for _, lines in self.line_strings_by_id.items()
         )
         info.append(f"Total Lines: {num_lines}")
         return "\n\t".join(info)
-
-
-def has_bad_in_the_middle(xml_file, valid_string):
-    """True if all lines are bad or bad line in between good lines."""
-    xml_line_elements = _get_hw_line_xml_elements(xml_file)
-    latest = None
-    flag = True
-    for i, line_ele in enumerate(xml_line_elements):
-        if line_ele.attrib["text"] in valid_string:
-            if latest is not None:
-                return True
-            flag = False
-        else:
-            # everything from first line up to now is invalid;
-            # this is fine since can remove lines from top;
-            if flag:
-                continue
-            # found a bad line after had found a good line;
-            # if all lines after this bad line are also bad
-            # this is fine since can also remove lines from bottom
-            # of form;
-            if latest is None:
-                latest = i
-    return flag
 
 
 def _get_machine_string_from_xml(xml_file):
@@ -331,13 +294,16 @@ def _get_hw_line_xml_elements(xml_file_path):
     return root.findall("handwritten-part/line")
 
 
-def _get_line_regions_from_xml_file(xml_file_path, valid_string):
+def _get_line_regions_from_xml_file(xml_file_path, valid_string) -> list[dict]:
     xml_line_elements = _get_hw_line_xml_elements(xml_file_path)
+    start, end = find_start_and_end_line(
+        xml_file_path, valid_string, xml_line_elements
+    )
+    if start is None:
+        return []
     coords_of_lines = [
-        _get_coords_of_xml_element(line_ele, "word/cmp")
-        for line_ele in xml_line_elements
-        # ignore some bad lines;
-        if line_ele.attrib["text"] in valid_string
+        _get_coords_of_xml_element(xml_line_elements[k], "word/cmp")
+        for k in range(start, end + 1)
     ]
     # next_line_region["y1"] - prev_line_region["y2"] < 0 possible due to overlapping characters
     line_gaps_y = [
@@ -365,11 +331,36 @@ def _get_line_regions_from_xml_file(xml_file_path, valid_string):
 def _get_line_strings_from_xml_file(xml_file_path, valid_string) -> list[str]:
     """Return list of strings for each handwritten line in a form."""
     xml_line_elements = _get_hw_line_xml_elements(xml_file_path)
+    start, end = find_start_and_end_line(
+        xml_file_path, valid_string, xml_line_elements
+    )
+    if start is None:
+        return []
     return [
-        el.attrib["text"].replace("&quot;", '"')
-        for el in xml_line_elements
-        if el.attrib["text"] in valid_string
+        xml_line_elements[k].attrib["text"].replace("&quot;", '"')
+        for k in range(start, end + 1)
     ]
+
+
+def find_start_and_end_line(xml_file, valid_string, xml_line_elements=None):
+    """Get tuple of start and end indexes."""
+    if xml_line_elements is None:
+        xml_line_elements = _get_hw_line_xml_elements(xml_file)
+    found_first = False
+    for i in range(len(xml_line_elements)):
+        curr = xml_line_elements[i].attrib["text"]
+        if curr in valid_string or curr[:-1] in valid_string:
+            found_first = True
+            break
+
+    if not found_first:
+        return None, None
+
+    for j in range(len(xml_line_elements) - 1, -1, -1):
+        curr = xml_line_elements[j].attrib["text"]
+        if curr in valid_string or curr[:-1] in valid_string:
+            return i, j
+    return i, j
 
 
 def _get_form_ids(split_filepath) -> set[str]:

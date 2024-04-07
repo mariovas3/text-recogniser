@@ -19,8 +19,14 @@ MAX_LINE_HEIGHT = 60
 # TOTAL_PARAGRAPHS = 1539
 # TOTAL_LINES = 13353
 
-# total counts after filtering bad forms and/or lines;
-TOTAL_IMAGES = 1_534
+# total counts after filtering out bad lines and/or forms;
+TOTAL_IMAGES = 1_539
+TOTAL_TRAIN_IMAGES = 1_202
+TOTAL_VAL_IMAGES = 105
 TOTAL_TEST_IMAGES = 232
-TOTAL_PARAGRAPHS = 1_534
-TOTAL_LINES = 12_664
+TOTAL_PARAGRAPHS = 1_539
+TOTAL_LINES = 13_287
+
+# these are forms in which the author wrote in all caps;
+# all of them are in the training set;
+ALL_CAPS_FORM_IDS = ["g07-000a", "g07-003a", "f07-101a", "g07-007a", "g01-022"]
