@@ -38,6 +38,11 @@ The project itself is fairly comprehensive and offers a lot of learning:
 * We always work with grayscale colourmapping. Throughout the codebase there might be some misterious `'L'` arguments passed to `PIL` functions. This stands for Luminance according to <a href="https://stackoverflow.com/questions/52307290/what-is-the-difference-between-images-in-p-and-l-mode-in-pil">this</a> stack overflow post and only stores grayscale.
 	* Also remember that PIL sizes return `(width, height)` layout in contrast to most arrays.
 ### Notes on IAMLines data:
+* Some tricky ids to test on:
+
+	```python
+	['h04-082', 'p02-155', 'j07-005', 'h06-089', 'a01-072x', 'p02-155', 'g03-004']
+	```
 * By following the fsdl recipe for getting line regions, I also found a few bad forms where the lines overlap too much resulting in the image being of 2 lines but the label is still the text of the first line only; forcing the algorithm to somehow ignore the second line of text from the image. To deal with this, I limited the `y2` coord to the `min` of  `y1 + metadata.MAX_LINE_HEIGHT` and `el.attrib['y'] + el.attrib['height']`.
 	* Empirically, this gave max height line of `119` pixels. This is even though `metadata.MAX_LINE_HEIGHT=60`. This is because the line height increases not only due to increase in `y2` (which we address with this heuristic) but also due to decreases in `y1` (which we don't control). Nevertheless, I did some checks and didn't find instances of two lines in an image anymore.
 	* Example of this behaviour is line at index 8 in form `r02-060`. The "f"'s overlap so line stop carries to the next line.

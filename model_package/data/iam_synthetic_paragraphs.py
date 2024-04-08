@@ -129,47 +129,10 @@ class IAMSyntheticParagraphsDataset(Dataset):
 
 
 if __name__ == "__main__":
-    import random
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import torch
-
-    from model_package.data.lit_datamodule import mock_lit_dataset
-
-    random.seed(0)
-    np.random.seed(0)
-    torch.manual_seed(0)
-
-    def test_plot(data_batch, batch_size, idx_to_char):
-        fig = plt.figure(figsize=(12, 12))
-        to_show = min(9, batch_size)
-        for i in range(to_show):
-            x, y = next(data_batch)
-            plt.subplot(3, 3, i + 1)
-            plt.imshow(x.squeeze().numpy(), cmap="gray")
-            num_lines = sum(idx_to_char[idx.item()] == "\n" for idx in y) + 1
-            plt.title(f"{num_lines =}")
-            plt.axis("off")
-        plt.tight_layout()
-        plt.show()
-
-    iam_par_dataset, args = mock_lit_dataset(IAMSyntheticParagraphs)
-    iam_par_dataset.prepare_data()
-    iam_par_dataset.setup(args["stage"])
-    print(iam_par_dataset)
-    if args["stage"] == "fit":
-        dl = iter(iam_par_dataset.train_dataloader())
-    else:
-        dl = iter(iam_par_dataset.test_dataloader())
-    x, y = next(dl)
-    # for _ in range(9):
-    #     text = ''.join(iam_par_dataset.idx_to_char[idx.item()] for idx in y[_])
-    #     print(text, end='\n\n')
-    print(f"x.shape: {x.shape}, y.shape: {y.shape}")
-    print(
-        f"x dtype, min, mean, max, std: {(x.dtype, x.min(), x.mean(), x.max(), x.std())}"
+    from model_package.data.testing_utils import (
+        get_info_litdata,
+        test_plot_para,
     )
-    print(f"y dtype, min, max: {(y.dtype, y.min(), y.max())}")
-    print(f"batch_size: {len(y)}")
-    test_plot(zip(x, y), len(y), idx_to_char=iam_par_dataset.idx_to_char)
+
+    x, y, idx_to_char = get_info_litdata(IAMSyntheticParagraphs)
+    test_plot_para(zip(x, y), len(y), idx_to_char=idx_to_char)

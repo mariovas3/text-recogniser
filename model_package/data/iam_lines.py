@@ -239,43 +239,10 @@ class IAMLinesTransforms:
 
 
 if __name__ == "__main__":
-    import random
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import torch
-
-    random.seed(0)
-    np.random.seed(0)
-    torch.manual_seed(0)
-
-    def test_plot(data_batch, batch_size, min_idx=0):
-        to_show = min(10, batch_size)
-        for i in range(to_show):
-            x, y = next(data_batch)
-            plt.subplot(10, 1, i + 1)
-            plt.imshow(x.squeeze().numpy(), cmap="gray")
-            label = "".join(
-                [metadata.MAPPING[idx.item()] for idx in y if idx >= min_idx]
-            )
-            plt.title(label)
-            plt.axis("off")
-        plt.tight_layout()
-        plt.show()
-
-    iam_lines_dataset, args = mock_lit_dataset(IAMLines)
-    iam_lines_dataset.prepare_data()
-    iam_lines_dataset.setup(args["stage"])
-    print(iam_lines_dataset)
-    if args["stage"] == "fit":
-        dl = iter(iam_lines_dataset.train_dataloader())
-    else:
-        dl = iter(iam_lines_dataset.test_dataloader())
-    x, y = next(dl)
-    print(f"x.shape: {x.shape}, y.shape: {y.shape}")
-    print(
-        f"x dtype, min, mean, max, std: {(x.dtype, x.min(), x.mean(), x.max(), x.std())}"
+    from model_package.data.testing_utils import (
+        get_info_litdata,
+        test_plot_lines,
     )
-    print(f"y dtype, min, max: {(y.dtype, y.min(), y.max())}")
-    print(f"batch_size: {len(y)}")
-    test_plot(zip(x, y), len(y), min_idx=4)
+
+    x, y, idx_to_char = get_info_litdata(IAMLines)
+    test_plot_lines(zip(x, y), len(y), idx_to_char, min_idx=4)
