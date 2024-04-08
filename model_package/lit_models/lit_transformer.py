@@ -1,4 +1,5 @@
 from itertools import chain
+from typing import Dict, Sequence, Union
 
 import lightning as L
 import torch
@@ -22,17 +23,17 @@ LR = 1e-3
 class LitResNetTransformer(L.LightningModule):
     def __init__(
         self,
-        idx_to_char,
-        input_dims,
-        max_seq_length,
-        resnet_config,
-        tf_dim=TF_DIM,
-        tf_fc_dim=TF_FC_DIM,
-        tf_nhead=TF_NHEAD,
-        tf_dropout=TF_DROPOUT,
-        tf_num_layers=TF_NUM_LAYERS,
-        lr=LR,
-        with_enc_pos=False,
+        idx_to_char: Sequence[str],
+        input_dims: Sequence[int],
+        max_seq_length: int,
+        resnet_config: Dict[str, Sequence[int]],
+        tf_dim: int = TF_DIM,
+        tf_fc_dim: int = TF_FC_DIM,
+        tf_nhead: int = TF_NHEAD,
+        tf_dropout: Union[int, float] = TF_DROPOUT,
+        tf_num_layers: int = TF_NUM_LAYERS,
+        lr: Union[int, float] = LR,
+        with_enc_pos: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters()

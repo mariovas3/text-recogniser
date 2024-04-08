@@ -1,20 +1,5 @@
 # lightning.pytorch==2.2.1
 seed_everything: 0
-my_model_checkpoint:
-  dirpath: null
-  filename: null
-  monitor: validation/loss
-  verbose: false
-  save_last: null
-  save_top_k: 1
-  save_weights_only: false
-  mode: min
-  auto_insert_metric_name: true
-  every_n_train_steps: null
-  train_time_interval: null
-  every_n_epochs: 50
-  save_on_train_epoch_end: null
-  enable_version_counter: true
 trainer:
   accelerator: auto
   strategy: auto
@@ -25,7 +10,7 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
-      project: "EMNISTLines"
+      project: "IAMLines"
       log_model: "all"
       name: "local_run"
   # get callbacks;
@@ -37,7 +22,6 @@ trainer:
     # <end> hacky way to get wandb to watch grads in a thread safe way;
     - class_path: model_package.lit_models.callbacks.LogPredsCallback
   fast_dev_run: false
-  # set small num of max_epochs;
   max_epochs: 4
   min_epochs: null
   max_steps: -1
@@ -71,9 +55,6 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
   default_root_dir: null
 model:
-  idx_to_char: ["<BLANK>", "<START>", "<END>", "<PAD>", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "!", "\"", "#", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", ":", ";", "?"]
-  # the input_dims and max_seq_length depend on the datamodule
-  # and are handled by jsonargparse.link_arguments
   resnet_config:
     in_channels: [1, 4, 4, 8, 8, 16, 16, 32, 32]
     out_channels: [4, 4, 8, 8, 16, 16, 32, 32, 64]
@@ -86,17 +67,30 @@ model:
   tf_num_layers: 4
   lr: 0.001
   with_enc_pos: false
+my_model_checkpoint:
+  dirpath: null
+  filename: null
+  monitor: validation/loss
+  verbose: false
+  save_last: null
+  save_top_k: 1
+  save_weights_only: false
+  mode: min
+  auto_insert_metric_name: true
+  every_n_train_steps: null
+  train_time_interval: null
+  # if both every_n_epochs and trainer.check_val_every_n_epoch
+  # are given, than checkpoint created after each epoch that is
+  # perfectly divided by my_model_checkpoint.every_n_epochs
+  # and trainer.check_val_every_n_epoch
+  every_n_epochs: 50
+  save_on_train_epoch_end: null
+  enable_version_counter: true
+ckpt_path: null
 data:
-  class_path: model_package.data.EMNISTLines
+  class_path: model_package.data.IAMLines
   init_args:
-    max_length: 32
-    min_overlap: 0
-    max_overlap: 0.33
-    num_train: 10000
-    num_val: 2000
-    num_test: 2000
-    with_start_and_end_tokens: true
+    augment: false
     batch_size: 128
     num_workers: 8
     gpus: 0
-ckpt_path: null

@@ -1,30 +1,31 @@
-from typing import Any
-
-from lightning import LightningModule, Trainer
+import wandb
+from lightning import Trainer
 from lightning.pytorch.callbacks import Callback
 
-import wandb
-from model_package.metadata.emnist import MAPPING
+# from model_package.metadata.emnist import MAPPING
 
 
 class LogPredsCallback(Callback):
     def on_validation_batch_end(
-        self, trainer, lit_module, preds, batch, batch_idx
+        self, trainer: Trainer, lit_module, preds, batch, batch_idx
     ):
         wandb_logger = trainer.logger
+        idx_to_char = trainer.datamodule.idx_to_char
         # preds comes from validation_step;
 
         # let's log 20 sample img predictions from first batch;
         if batch_idx == 0:
-            n = 20
+            n = 10
             x, y = batch
             imgs = [img for img in x[:n]]
             # ignore BLANK, START, END and PAD tokens;
             ground_truth_text, pred_text = [], []
             for yi, yi_pred in zip(y[:n], preds[:n]):
-                gtt_i = "".join(MAPPING[yii.item()] for yii in yi if yii > 3)
+                gtt_i = "".join(
+                    idx_to_char[yii.item()] for yii in yi if yii > 3
+                )
                 pt_i = "".join(
-                    MAPPING[yii.item()] for yii in yi_pred if yii > 3
+                    idx_to_char[yii.item()] for yii in yi_pred if yii > 3
                 )
                 ground_truth_text.append(gtt_i)
                 pred_text.append(pt_i)

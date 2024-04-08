@@ -89,7 +89,7 @@ def convert_strings_to_labels(
     """Make each string into array of idxs based on char_to_idx mapping."""
     # init all as pad idxs;
     labels = (
-        np.ones((len(strings), length), dtype=np.uint8) * char_to_idx["<PAD>"]
+        np.ones((len(strings), length), dtype=np.int64) * char_to_idx["<PAD>"]
     )
     offset = int(with_start_and_end_tokens)
     for i, s in enumerate(strings):

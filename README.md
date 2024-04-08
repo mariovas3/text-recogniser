@@ -71,10 +71,16 @@ The project itself is fairly comprehensive and offers a lot of learning:
 	```
 
 ## Progress:
-* I tested the lit transformer manually to overfit a single batch and reach zero character error rate on it. That worked.
+* I tested the lit transformer manually to overfit a single batch of `EMNISTLines` and reach zero character error rate on it. It worked.
 * The `overfit_batches=1` using the lightning Trainer seems to use a different validation batch than the training batch so you only overfit the training batch and not necessarily the validation batch. There are a bunch of issues on GH about the functionality, seems quite contraversial to some people requesting all kinds of functionalities.
-* Managed to enforce equal arg vals for `data.max_length` and `model.max_seq_length` via `link_arguments` of `jsonargparse` after subclassing the `LightningCLI` (equality enforced upon parse). Similarly, linked the model's `input_dims` to the data's `input_dims`. Upon instantiation of `data`, the `data.input_dims` attribute is set and then used as input to the constructor of the model.
+* Managed to enforce equal arg vals for `data.output_dims[0]` and `model.max_seq_length`, `data.input_dims` and `model.input_dims`, and `data.idx_to_char` and `model.idx_to_char` via `link_arguments` of `jsonargparse` after subclassing the `LightningCLI` (equality enforced upon data instantiation). Upon instantiation of `data`, the data attributes are set and then used as input to the constructor of the model.
 * Made the `ModelCheckpoint` callback configurable in the `training/run_experiment.py` script via the `my_model_checkpoint` name in the cli (by subclassing the `LightningCLI`).
+* Made it easy to select which dataset to train on via `LightningCLI`. The usage is e.g.,
+
+	```bash
+	$ python training/run_experiment.py fit --config CONFIG --data=IAMLines ...
+	```
+* Also tested `IAMParagraphs` and it works.
 
 ## Running experiments:
 * First `cd` in the root of the repo (parent of `model_package`).
@@ -82,17 +88,26 @@ The project itself is fairly comprehensive and offers a lot of learning:
 * Third, run `wandb login` to login to the wandb with your api key.
 * Fourth, run `export WANDB_START_METHOD="thread"` otherwise some weird threading exception occurs. For more info see this <a href="https://github.com/wandb/wandb/issues/3223#issuecomment-1032820724">issue</a>.
 * Then run what you wanna run:
+
 	```bash
-	$ python training/run_experiment.py fit --config emnistlines_experiment_config.yaml --trainer.overfit_batches=1 --trainer.max_epochs=200 --trainer.check_val_every_n_epoch=50 --data.batch_size=64
+	$ python training/run_experiment.py fit --config emnistlines_experiment_config.yaml --data=EMNISTLines --trainer.overfit_batches=1 --trainer.max_epochs=200 --trainer.check_val_every_n_epoch=50 --data.batch_size=64
 	```
-* To e.g., continue the training for another 200 epochs, just set the `--trainer.max_epochs=400` and provide a `--ckpt_path` value like so:
+* To e.g., continue the training for another 200 epochs, just set the `--trainer.max_epochs=400` and provide a `--ckpt_path` path to the model that has trained for 200 epochs like so:
+
 	```bash
-	$ python training/run_experiment.py fit --config emnistlines_experiment_config.yaml --trainer.overfit_batches=1 --trainer.max_epochs=400 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --ckpt_path='PathToCkpt'
+	$ python training/run_experiment.py fit --config emnistlines_experiment_config.yaml --data=EMNISTLines --trainer.overfit_batches=1 --trainer.max_epochs=400 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --ckpt_path='PathToCkpt'
 	```
 * To run the `test` subcommand, do:
+
 	```bash
-	python training/run_experiment.py test --config emnistlines_experiment_config.yaml --data.batch_size=64 --ckpt_path='PathToCkpt'
+	$ python training/run_experiment.py test --config emnistlines_experiment_config.yaml --data=EMNISTLines --data.batch_size=64 --ckpt_path='PathToCkpt'
 	```
+
+## Quick sanity check runs:
+
+```bash
+$ python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --trainer.limit_train_batches=5 --trainer.limit_val_batches=1 --trainer.max_epochs=20 --trainer.check_val_every_n_epoch=5 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=4 --data.num_workers=4 --trainer.strategy=ddp
+```
 
 ## Google Drive API setup (for hosting data):
 * Follow instructions <a href="https://developers.google.com/drive/api/quickstart/python">here</a>.
