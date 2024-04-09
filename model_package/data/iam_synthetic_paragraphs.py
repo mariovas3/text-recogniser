@@ -15,13 +15,29 @@ from model_package.data.iam_paragraphs import IAMParagraphs
 
 
 class IAMSyntheticParagraphs(IAMParagraphs):
-    def __init__(self, dataset_len=metadata.DATASET_LEN, **kwargs):
+    def __init__(
+        self, dataset_len=metadata.DATASET_LEN, use_precomputed=False, **kwargs
+    ):
         super().__init__(**kwargs)
         self.line_crops = None
         self.line_labels = None
         self.dataset_len = dataset_len
+        self.use_precomputed = use_precomputed
 
     def prepare_data(self) -> None:
+        if self.use_precomputed:
+            if metadata.SYNTH_PAR_DIR.exists():
+                try:
+                    counts = len(
+                        list((metadata.SYNTH_PAR_DIR / "train").glob("*.png"))
+                    )
+                except:
+                    print("No precomputed synth paragraphs found!")
+                    print("Will synthesize paragraphs on the fly...")
+                    counts = 0
+                if counts:
+                    return
+            self.use_precomputed = False
         if metadata.PROCESSED_DATA_DIR.exists():
             print(
                 f"PROCESSED DIR already exists: {metadata.PROCESSED_DATA_DIR}"
@@ -50,17 +66,18 @@ class IAMSyntheticParagraphs(IAMParagraphs):
             self.input_dims,
             self.output_dims,
             self.trainval_transform,
+            self.use_precomputed,
         )
 
     def _load_processed_crops_and_labels(self) -> None:
+        if self.use_precomputed:
+            data_dir = metadata.SYNTH_PAR_DIR
+        else:
+            data_dir = metadata.PROCESSED_DATA_DIR
         if self.line_crops is None:
-            self.line_crops = load_processed_line_crops(
-                "train", metadata.PROCESSED_DATA_DIR
-            )
+            self.line_crops = load_processed_line_crops("train", data_dir)
         if self.line_labels is None:
-            self.line_labels = load_processed_line_labels(
-                "train", metadata.PROCESSED_DATA_DIR
-            )
+            self.line_labels = load_processed_line_labels("train", data_dir)
 
     def __repr__(self):
         ans = (
@@ -70,6 +87,14 @@ class IAMSyntheticParagraphs(IAMParagraphs):
             f"Output dims: {self.output_dims}\n"
         )
         return ans
+
+    @staticmethod
+    def add_to_argparse(parser):
+        parser.add_argument(
+            "--use_precomputed",
+            action="store_true",
+            help="Whether to check if precomputed synth paragraphs available.",
+        )
 
 
 class IAMSyntheticParagraphsDataset(Dataset):
@@ -82,6 +107,7 @@ class IAMSyntheticParagraphsDataset(Dataset):
         input_dims,
         output_dims,
         transform,
+        use_precomputed,
     ):
         super().__init__()
         assert len(line_crops) == len(line_labels)
@@ -94,28 +120,37 @@ class IAMSyntheticParagraphsDataset(Dataset):
         self.input_dims = input_dims
         self.output_dims = output_dims
         self.transform = transform
-        self.min_num_lines, self.max_num_lines = 1, 15
+        self.min_num_lines, self.max_num_lines = 1, 13
+        self.use_precomputed = use_precomputed
 
     def __len__(self):
+        if self.use_precomputed:
+            return len(self.line_crops)
         return self.dataset_len
 
     def __getitem__(self, idx):
-        # this whole sampling thing should be precomputed somewhere;
-        num_lines = random.randint(self.min_num_lines, self.max_num_lines)
-        indices = random.sample(self.ids, k=num_lines)
+        if self.use_precomputed:
+            # line crops are actually synthetic paragraphs here;
+            # line labels are actually synthetic paragraphs labels here;
+            datum = self.line_crops[idx]
+            labels = self.line_labels[idx]
+        else:
+            # this whole sampling thing should be precomputed somewhere;
+            num_lines = random.randint(self.min_num_lines, self.max_num_lines)
+            indices = random.sample(self.ids, k=num_lines)
 
-        while True:
-            datum = utils.hstack_line_crops(
-                [self.line_crops[i] for i in indices]
-            )
-            labels = "\n".join([self.line_labels[i] for i in indices])
-            if (
-                len(labels) <= self.output_dims[0] - 2
-                and datum.height <= self.input_dims[1]
-                and datum.width <= self.input_dims[2]
-            ):
-                break
-            indices = indices[:-1]
+            while True:
+                datum = utils.hstack_line_crops(
+                    [self.line_crops[i] for i in indices]
+                )
+                labels = "\n".join([self.line_labels[i] for i in indices])
+                if (
+                    len(labels) <= self.output_dims[0] - 2
+                    and datum.height <= self.input_dims[1]
+                    and datum.width <= self.input_dims[2]
+                ):
+                    break
+                indices = indices[:-1]
         if self.transform is not None:
             datum = self.transform(datum)
         length = self.output_dims[0]

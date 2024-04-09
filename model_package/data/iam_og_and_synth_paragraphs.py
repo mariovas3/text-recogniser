@@ -10,13 +10,20 @@ from model_package.metadata.iam_synthetic_paragraphs import DATASET_LEN
 
 class IAMOgAndSynthParagraphs(BaseDataModule):
     def __init__(
-        self, augment=False, dataset_len=DATASET_LEN, **kwargs
+        self,
+        augment=False,
+        dataset_len=DATASET_LEN,
+        use_precomputed=False,
+        **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.augment = augment
         self.iam_paragraphs = IAMParagraphs(augment=augment, **kwargs)
         self.iam_synth_paragraphs = IAMSyntheticParagraphs(
-            dataset_len=dataset_len, augment=augment, **kwargs
+            dataset_len=dataset_len,
+            augment=augment,
+            use_precomputed=use_precomputed,
+            **kwargs,
         )
         self.input_dims = self.iam_paragraphs.input_dims
         self.output_dims = self.iam_paragraphs.output_dims
@@ -38,6 +45,11 @@ class IAMOgAndSynthParagraphs(BaseDataModule):
             type=int,
             default=DATASET_LEN,
             help=f"Length of Synthetic Paragraphs Dataset, default is {DATASET_LEN}",
+        )
+        parser.add_argument(
+            "--use_precomputed",
+            action="store_true",
+            help="Whether to check if precomputed synth paragraphs available.",
         )
         return parser
 

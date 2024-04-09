@@ -1,6 +1,7 @@
 from model_package.metadata import shared
 
 PROCESSED_DATA_DIR = shared.DATA_DIR / "processed" / "iam_synthetic_paragraphs"
+SYNTH_PAR_DIR = PROCESSED_DATA_DIR / "synth_paragraphs"
 
 EXPECTED_BATCH_SIZE = 64
 EXPECTED_GPUS = 8
