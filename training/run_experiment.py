@@ -7,9 +7,8 @@ from lightning.pytorch.cli import (
 )
 from lightning.pytorch.loggers import Logger
 
+# the noqa flag is to tell the linter to ignore unused import;
 import model_package.data  # noqa: F401
-
-# from model_package.data.emnist_lines import EMNISTLines
 from model_package.lit_models.lit_transformer import LitResNetTransformer
 
 # <start> hacky way to get wandb to watch grads in a thread safe way;
@@ -63,7 +62,6 @@ class LoggerSaveConfigCallback(SaveConfigCallback):
 def main():
     cli = MyLitCLI(
         model_class=LitResNetTransformer,
-        # datamodule_class=EMNISTLines,  # specify dataset using --data=IAMLines
         # <start> hacky way to get wandb to watch grads in a thread safe way;
         # trainer_class=MyTrainer,
         # <end> hacky way to get wandb to watch grads in a thread safe way;
