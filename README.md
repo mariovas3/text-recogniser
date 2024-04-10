@@ -71,19 +71,19 @@ The project itself is fairly comprehensive and offers a lot of learning:
 * I tested my lit transformer manually to overfit a single batch of `EMNISTLines` and reach zero Character Error Rate (CER) on it. It worked after 200 gradient steps.
 * I also tested the lit transformer to overfit a single batch of the more challenging `IAMLines`, and reach zero CER. This worked in about 300 epochs.
 
-	* Below is a `wandb` dashboard of training metrics for the overfit batch.
+* Below is a `wandb` dashboard of training metrics for the overfit batch of `IAMLines`.
 
-	<img alt="training metrics for IAMLines overfit batch" src="./assets/images/iam_lines_overfit_train_metrics.png">
+<img alt="training metrics for IAMLines overfit batch" src="./assets/images/iam_lines_overfit_train_metrics.png"/>
 
-	* Below is a `wandb` table of logged images from batch along with ground truth label and predictions.
+* Below is a `wandb` table of logged images from batch along with ground truth label and predictions for `IAMLines`.
 
-	<img alt="table of image ground truth and predicted labels from IAMLines overfit batch" src="./assets/images/iam_lines_overfit_batch_table.png">
+<img alt="table of image ground truth and predicted labels from IAMLines overfit batch" src="./assets/images/iam_lines_overfit_batch_table.png"/>
 
-	* The command to reproduce the results is:
+* The command to reproduce the results is:
 
-	```bash
-	$ python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --data=IAMLines --trainer.overfit_batches=1 --trainer.max_epochs=300 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=20
-	```
+```bash
+$ python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --data=IAMLines --trainer.overfit_batches=1 --trainer.max_epochs=300 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=20
+```
 
 * The `overfit_batches=1` using the lightning `Trainer` seems to use a different validation batch than the training batch so I wrote a custom lightning `Callback` to log stuff about the training batch.
 * Managed to enforce equal arg vals for `data.output_dims[0]` and `model.max_seq_length`, `data.input_dims` and `model.input_dims`, and `data.idx_to_char` and `model.idx_to_char` via `link_arguments` of `jsonargparse` after subclassing the `LightningCLI` (equality enforced upon data instantiation). Upon instantiation of `data`, the data attributes are set and then used as input to the constructor of the model.
