@@ -85,7 +85,7 @@ The project itself is fairly comprehensive and offers a lot of learning:
 	$ python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --data=IAMLines --trainer.overfit_batches=1 --trainer.max_epochs=300 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=20
 	```
 
-* The `overfit_batches=1` using the lightning Trainer seems to use a different validation batch than the training batch so you only overfit the training batch and not necessarily the validation batch. There are a bunch of issues on GH about the functionality, seems quite contraversial to some people requesting all kinds of functionalities.
+* The `overfit_batches=1` using the lightning `Trainer` seems to use a different validation batch than the training batch so I wrote a custom lightning `Callback` to log stuff about the training batch.
 * Managed to enforce equal arg vals for `data.output_dims[0]` and `model.max_seq_length`, `data.input_dims` and `model.input_dims`, and `data.idx_to_char` and `model.idx_to_char` via `link_arguments` of `jsonargparse` after subclassing the `LightningCLI` (equality enforced upon data instantiation). Upon instantiation of `data`, the data attributes are set and then used as input to the constructor of the model.
 * Made the `ModelCheckpoint` callback configurable in the `training/run_experiment.py` script via the `my_model_checkpoint` name in the cli (by subclassing the `LightningCLI`).
 * Made it easy to select which dataset to train on via `LightningCLI`. The usage is e.g.,
@@ -121,7 +121,7 @@ The project itself is fairly comprehensive and offers a lot of learning:
 ## Quick sanity check runs:
 
 ```bash
-$ python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --trainer.limit_train_batches=5 --trainer.limit_val_batches=1 --trainer.max_epochs=20 --trainer.check_val_every_n_epoch=5 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=4 --data.num_workers=4 --trainer.strategy=ddp
+$ python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --data=IAMLines --trainer.limit_train_batches=5 --trainer.limit_val_batches=1 --trainer.max_epochs=20 --trainer.check_val_every_n_epoch=5 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=4 --data.num_workers=4 --trainer.strategy=ddp
 ```
 
 ## Google Drive API setup (for hosting data):
