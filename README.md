@@ -7,12 +7,10 @@ The project itself is fairly comprehensive and offers a lot of learning:
 * Distributed training with **PyTorch Lightning**
 * Data wrangling and data synthesis using the <a href="https://fki.tic.heia-fr.ch/databases/iam-handwriting-database">IAM</a> and <a href="https://www.nist.gov/itl/products-and-services/emnist-dataset">EMNIST</a> datasets.
 * Experiment tracking with **wandb**
-* Deployment of model as a serverless app with **AWS Lambda**
-* Using **Gradio** for hosting a quick MVP app
 
 ## My improvements over the fsdl project:
 * Removed a lot of argparse boilerplate in favour of `LightningCLI` and YAML config files.
-* I use my own ResNet, giving me more customisability, in contrast to using a fixed `resnet18` architecture.
+* I use my own `ResNet`, giving me more customisability, in contrast to using a fixed `resnet18` architecture.
 * Instead of 2D $\text{sin}$ and $\text{cos}$ positional embedding, my model learns the positional embeddings. This is similar to GPT-2 training.
 * In the transformer decoder, I use `dropout=0` in line with GPT training, although it is easy to set it to other values from the CLI `--model.tf_dropout=DROPOUT`.
 * In the fsdl repo they set the `ignore_index=self.padding_token` in the cross entropy loss, which seems to lead to worse performance, so I removed that.
@@ -21,22 +19,21 @@ The project itself is fairly comprehensive and offers a lot of learning:
 	* The credentials for the google drive api should live in the root directory as `token.json` or if the token has expired, flow credentials in the same directory under the name of `google_drive_credentials.json` should exist.
 	* The google drive download function is available in the <a href="./model_package/project_utils.py">project utils file</a>.
 
-## TODO:
 
 ## Maintainer notes:
 * If bumping the version of python support to 3.12 and above, I could swap the use of `boltons.cacheutils.cachedproperty` for `functools.cached_property`. Currently I'm aiming to support python 3.11, which still uses the old version of `functools.cached_property` which has <a href="https://discuss.python.org/t/finding-a-path-forward-for-functools-cached-property/23757">tricky locking</a> in multithreaded apps, so will use the `boltons` version for now.
 * For parsing `xml`, I currently use <a href="https://pypi.org/project/defusedxml">defusedxml</a> since the standard lib can be vulnerable to some bad `xml`.
 
 ## Notes on IAM data:
-* Some authours have written stuff like `Sentence Database P02-109` and then horizontal lines and then the content they were actually supposed to write. To deal with this, I only take the lines starting from the first line that appears in the machine-written part of the form and end in the first line, bottom to top, that appears in the form. The hope is to filter out handwritten text of the non-machine-written part.
+* Some authours have written stuff like `Sentence Database P02-109` and then horizontal lines and then the content they were actually supposed to write. To deal with this, I only take the lines starting from the first line that appears in the machine-written part of the form and end in the first line, bottom to top, that appears in the form. The hope is to filter out invalid handwritten text that surrounds the desired content of the machine-written part.
 	* Example of a bad form is: `p02-109`.
 * A few authours of forms have written in all-caps undermining the case sensitive nature of the labels. When filtering lines based on the machine part of the xml, I will uppercase the validation string (machine part). The all-caps forms are:
 
 	```python
 	['g07-000a', 'g07-003a', 'f07-101a', 'g07-007a', 'g01-022']
 	```
-* We always work with grayscale colourmapping. Throughout the codebase there might be some misterious `'L'` arguments passed to `PIL` functions. This stands for Luminance according to <a href="https://stackoverflow.com/questions/52307290/what-is-the-difference-between-images-in-p-and-l-mode-in-pil">this</a> stack overflow post and only stores grayscale.
-	* Also remember that PIL sizes return `(width, height)` layout in contrast to most arrays.
+* I always work with grayscale colourmapping. Throughout the codebase there might be some misterious `'L'` arguments passed to `PIL` functions. This stands for *Luminance* according to <a href="https://stackoverflow.com/questions/52307290/what-is-the-difference-between-images-in-p-and-l-mode-in-pil">this</a> stack overflow post and only stores grayscale.
+	* Also remember that PIL sizes return `(width, height)` layout in contrast to most array APIs.
 ### Notes on IAMLines data:
 * Some tricky ids to test on:
 
@@ -58,7 +55,7 @@ The project itself is fairly comprehensive and offers a lot of learning:
 	```
 ### Notes on IAMParagraphs data:
 * The paragraph crop results from taking a crop from the first line region to the last line region in  the `line_regions_by_id` attribute.
-* Similarly to the IAMLines data, I resize the paragraph crops to I have 28 pixels of height per line:
+* Similarly to the IAMLines data, I resize the paragraph crops so I have 28 pixels of height per line:
 
 	```python
 	def resize_to_pix_per_line(img, num_lines, pix=28):
@@ -71,7 +68,23 @@ The project itself is fairly comprehensive and offers a lot of learning:
 	```
 
 ## Progress:
-* I tested the lit transformer manually to overfit a single batch of `EMNISTLines` and reach zero character error rate on it. It worked.
+* I tested my lit transformer manually to overfit a single batch of `EMNISTLines` and reach zero Character Error Rate (CER) on it. It worked after 200 gradient steps.
+* I also tested the lit transformer to overfit a single batch of the more challenging `IAMLines`, and reach zero CER. This worked in about 300 epochs.
+
+	* Below is a `wandb` dashboard of training metrics for the overfit batch.
+
+	<img alt="training metrics for IAMLines overfit batch" src="./assets/images/iam_lines_overfit_train_metrics.png">
+
+	* Below is a `wandb` table of logged images from batch along with ground truth label and predictions.
+
+	<img alt="table of image ground truth and predicted labels from IAMLines overfit batch" src="./assets/images/iam_lines_overfit_batch_table.png">
+
+	* The command to reproduce the results is:
+
+	```bash
+	$ python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --data=IAMLines --trainer.overfit_batches=1 --trainer.max_epochs=300 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=20
+	```
+
 * The `overfit_batches=1` using the lightning Trainer seems to use a different validation batch than the training batch so you only overfit the training batch and not necessarily the validation batch. There are a bunch of issues on GH about the functionality, seems quite contraversial to some people requesting all kinds of functionalities.
 * Managed to enforce equal arg vals for `data.output_dims[0]` and `model.max_seq_length`, `data.input_dims` and `model.input_dims`, and `data.idx_to_char` and `model.idx_to_char` via `link_arguments` of `jsonargparse` after subclassing the `LightningCLI` (equality enforced upon data instantiation). Upon instantiation of `data`, the data attributes are set and then used as input to the constructor of the model.
 * Made the `ModelCheckpoint` callback configurable in the `training/run_experiment.py` script via the `my_model_checkpoint` name in the cli (by subclassing the `LightningCLI`).
@@ -103,7 +116,7 @@ The project itself is fairly comprehensive and offers a lot of learning:
 	$ python training/run_experiment.py test --config emnistlines_experiment_config.yaml --data=EMNISTLines --data.batch_size=64 --ckpt_path='PathToCkpt'
 	```
 
-> **NOTE**: Since in overfit batches mode, the validation batch is not guaranteed to be the same as the training batch, I wrote a callback to log images and predictions for the training batch that we actually overfit. To check which epoch the table comes from, check the .json file of the table from the wandb UI in the `files/medai/table` section of the run.
+> **NOTE**: Since in overfit batches mode the validation batch is not guaranteed to be the same as the training batch, I wrote a callback to log images and predictions for the training batch that we actually overfit. To check which epoch the table comes from, check the `.json` file of the table from the wandb UI in the `files/medai/table` section of the run.
 
 ## Quick sanity check runs:
 

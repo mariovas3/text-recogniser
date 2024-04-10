@@ -13,7 +13,7 @@ class MyCharErrorRate(CharErrorRate):
     Rate = (S + D + I) / (S + D + C)
 
     Basically the numerator is the edit_distance(pred, target)
-    and you win if C > I. Lower is better - ideally 0, can be
+    and you win if C > I. Lower is better - ideally 0; can be
     greater than 1, however.
 
     Where:

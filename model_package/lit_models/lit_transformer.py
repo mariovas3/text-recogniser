@@ -61,6 +61,9 @@ class LitResNetTransformer(L.LightningModule):
         self.val_cer = MyCharErrorRate(
             [self.padding_token, self.start_token, self.end_token]
         )
+        self.train_cer = MyCharErrorRate(
+            [self.padding_token, self.start_token, self.end_token]
+        )
 
         # Encoder setup - RESNET;
         self.encoder = ResNet(resnet_config)
@@ -176,18 +179,29 @@ class LitResNetTransformer(L.LightningModule):
         )
         # to make use of overfit_batches != 0 flag of L.Trainer
         # and log preds of the batch we wish to overfit;
-        remainder = (
+        img_remainder = (
             self.current_epoch + 1
         ) % self.trainer.check_val_every_n_epoch
+        cer_remainder = (self.current_epoch + 1) % 10
         predicate = (
             self.trainer.overfit_batches > 0
             and self.global_rank == 0
-            and remainder == 0
             and dataloader_idx == 0
             and batch_idx == 0
         )
         if predicate:
-            self.training_step_outputs.append(outs.argmax(-2))
+            outs = outs.argmax(-2)
+            if cer_remainder == 0:
+                cer = self.train_cer(outs, batch[-1])
+                self.log(
+                    "training/cer",
+                    cer.item(),
+                    logger=True,
+                    on_step=True,
+                    prog_bar=True,
+                )
+            if img_remainder == 0:
+                self.training_step_outputs.append(outs)
         return loss
 
     def on_train_epoch_end(self):
