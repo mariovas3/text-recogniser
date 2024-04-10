@@ -183,6 +183,7 @@ class LitResNetTransformer(L.LightningModule):
             self.current_epoch + 1
         ) % self.trainer.check_val_every_n_epoch
         cer_remainder = (self.current_epoch + 1) % 10
+        # check if in overfit_batches mode;
         predicate = (
             self.trainer.overfit_batches > 0
             and self.global_rank == 0
@@ -190,8 +191,9 @@ class LitResNetTransformer(L.LightningModule):
             and batch_idx == 0
         )
         if predicate:
-            outs = outs.argmax(-2)
-            if cer_remainder == 0:
+            if not cer_remainder or not img_remainder:
+                outs = outs.argmax(-2)
+            if not cer_remainder:
                 cer = self.train_cer(outs, batch[-1])
                 self.log(
                     "training/cer",
@@ -200,7 +202,7 @@ class LitResNetTransformer(L.LightningModule):
                     on_step=True,
                     prog_bar=True,
                 )
-            if img_remainder == 0:
+            if not img_remainder:
                 self.training_step_outputs.append(outs)
         return loss
 
