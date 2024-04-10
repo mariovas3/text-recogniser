@@ -4,55 +4,45 @@ from torch.utils.data import Dataset
 
 import model_package.metadata.iam_synthetic_paragraphs as metadata
 from model_package.data import utils
-from model_package.data.iam import IAM
+from model_package.data.create_synth_paragraphs import (
+    save_iam_lines_crops_and_labels,
+    synth_and_save_paragraphs,
+)
 from model_package.data.iam_lines import (
-    generate_line_crops_and_labels,
     load_processed_line_crops,
     load_processed_line_labels,
-    save_images_and_labels,
 )
 from model_package.data.iam_paragraphs import IAMParagraphs
 
 
 class IAMSyntheticParagraphs(IAMParagraphs):
     def __init__(
-        self, dataset_len=metadata.DATASET_LEN, use_precomputed=False, **kwargs
+        self,
+        dataset_len=metadata.DATASET_LEN,
+        min_num_lines=metadata.MIN_NUM_LINES,
+        max_num_lines=metadata.MAX_NUM_LINES,
+        use_precomputed=False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.line_crops = None
         self.line_labels = None
         self.dataset_len = dataset_len
         self.use_precomputed = use_precomputed
+        self.min_num_lines = min_num_lines
+        self.max_num_lines = max_num_lines
 
     def prepare_data(self) -> None:
+        save_iam_lines_crops_and_labels()
+
+        # see whether to precompute paragraphs;
         if self.use_precomputed:
-            if metadata.SYNTH_PAR_DIR.exists():
-                try:
-                    counts = len(
-                        list((metadata.SYNTH_PAR_DIR / "train").glob("*.png"))
-                    )
-                except:
-                    print("No precomputed synth paragraphs found!")
-                    print("Will synthesize paragraphs on the fly...")
-                    counts = 0
-                if counts:
-                    return
-            self.use_precomputed = False
-        if metadata.PROCESSED_DATA_DIR.exists():
-            print(
-                f"PROCESSED DIR already exists: {metadata.PROCESSED_DATA_DIR}"
+            print(f"Will use static synthetic paragraphs...")
+            synth_and_save_paragraphs(
+                size=self.dataset_len,
+                min_num_lines=self.min_num_lines,
+                max_num_lines=self.max_num_lines,
             )
-            return
-
-        iam = IAM()
-        iam.prepare_data()
-
-        # synthetic dataset only for training phase;
-        print(f"Preparing IAMSyntheticParagraphs...")
-        crops, labels = generate_line_crops_and_labels(iam, "train")
-        save_images_and_labels(
-            crops, labels, "train", metadata.PROCESSED_DATA_DIR
-        )
 
     def setup(self, stage) -> None:
         assert stage == "fit"
@@ -66,6 +56,8 @@ class IAMSyntheticParagraphs(IAMParagraphs):
             self.input_dims,
             self.output_dims,
             self.trainval_transform,
+            self.min_num_lines,
+            self.max_num_lines,
             self.use_precomputed,
         )
 
@@ -85,6 +77,8 @@ class IAMSyntheticParagraphs(IAMParagraphs):
             f"Num classes: {len(self.idx_to_char)}\n"
             f"Input dims: {self.input_dims}\n"
             f"Output dims: {self.output_dims}\n"
+            f"Paragraph Min Num Lines: {self.min_num_lines}\n"
+            f"Paragraph Max Num Lines: {self.max_num_lines}\n"
         )
         return ans
 
@@ -107,6 +101,8 @@ class IAMSyntheticParagraphsDataset(Dataset):
         input_dims,
         output_dims,
         transform,
+        min_num_lines,
+        max_num_lines,
         use_precomputed,
     ):
         super().__init__()
@@ -120,7 +116,7 @@ class IAMSyntheticParagraphsDataset(Dataset):
         self.input_dims = input_dims
         self.output_dims = output_dims
         self.transform = transform
-        self.min_num_lines, self.max_num_lines = 1, 13
+        self.min_num_lines, self.max_num_lines = min_num_lines, max_num_lines
         self.use_precomputed = use_precomputed
 
     def __len__(self):

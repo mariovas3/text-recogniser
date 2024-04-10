@@ -3,24 +3,67 @@ from argparse import ArgumentParser
 
 import model_package.metadata.iam_synthetic_paragraphs as metadata
 from model_package.data import utils
-from model_package.data.iam_lines import save_images_and_labels
-from model_package.data.iam_synthetic_paragraphs import IAMSyntheticParagraphs
+from model_package.data.iam import IAM
+from model_package.data.iam_lines import (
+    generate_line_crops_and_labels,
+    load_processed_crops_and_labels,
+    save_images_and_labels,
+)
 from model_package.metadata.iam_paragraphs import DIMS, OUTPUT_DIMS
 
 
-def main():
-    args = get_args()
-    iam_synth = IAMSyntheticParagraphs(**args)
-    # saves line crops and labels from IAM dataset;
-    iam_synth.prepare_data()
-    iam_synth._load_processed_crops_and_labels()
-    paragraphs, labels = get_paragraphs_and_labels(args, iam_synth)
-    save_images_and_labels(
-        paragraphs,
-        labels,
-        split="train",
-        dir_path=metadata.PROCESSED_DATA_DIR / "synth_paragraphs",
-    )
+def _is_synth_saved():
+    if metadata.SYNTH_PAR_DIR.exists():
+        try:
+            counts = len(
+                list((metadata.SYNTH_PAR_DIR / "train").glob("*.png"))
+            )
+        except:
+            return False
+        return counts > 0
+    return False
+
+
+def save_iam_lines_crops_and_labels():
+    if metadata.PROCESSED_DATA_DIR.exists():
+        print(f"PROCESSED DIR already exists: {metadata.PROCESSED_DATA_DIR}")
+        return
+    print(f"Preparing IAMSyntheticParagraphs...")
+    print(f"Processing IAMLines crops and labels...")
+    iam = IAM()
+    iam.prepare_data()
+
+    crops, labels = generate_line_crops_and_labels(iam, "train")
+    save_images_and_labels(crops, labels, "train", metadata.PROCESSED_DATA_DIR)
+
+
+def synth_and_save_paragraphs(
+    size=metadata.DATASET_LEN,
+    seed=0,
+    min_num_lines=metadata.MIN_NUM_LINES,
+    max_num_lines=metadata.MAX_NUM_LINES,
+):
+    save_iam_lines_crops_and_labels()
+    if not _is_synth_saved():
+        print(f"Synthesizing paragraphs...")
+        line_crops, line_labels = load_processed_crops_and_labels(
+            "train", metadata.PROCESSED_DATA_DIR
+        )
+        args = {
+            "size": size,
+            "seed": seed,
+            "min_num_lines": min_num_lines,
+            "max_num_lines": max_num_lines,
+        }
+        paragraphs, labels = get_paragraphs_and_labels(
+            args, line_crops, line_labels
+        )
+        save_images_and_labels(
+            paragraphs,
+            labels,
+            split="train",
+            dir_path=metadata.SYNTH_PAR_DIR,
+        )
 
 
 class LineIdxGenerator:
@@ -56,15 +99,12 @@ class LineIdxGenerator:
         return ans
 
 
-def get_paragraphs_and_labels(args, iam_synth: IAMSyntheticParagraphs):
-    assert (
-        iam_synth.line_crops is not None
-    ), "Need to load the crops and labels."
-    size = args.get("size", iam_synth.dataset_len)
-    min_num_lines = args.get("min_num_lines", 1)
-    max_num_lines = args.get("max_num_lines", 13)
+def get_paragraphs_and_labels(args, line_crops, line_labels):
+    size = args.get("size", metadata.DATASET_LEN)
+    min_num_lines = args.get("min_num_lines", metadata.MIN_NUM_LINES)
+    max_num_lines = args.get("max_num_lines", metadata.MAX_NUM_LINES)
     seed = args.get("seed", 0)
-    ids = list(range(len(iam_synth.line_crops)))
+    ids = list(range(len(line_crops)))
 
     # get line idx sampler;
     line_idx_gen = LineIdxGenerator(
@@ -84,10 +124,8 @@ def get_paragraphs_and_labels(args, iam_synth: IAMSyntheticParagraphs):
         indices = line_idx_gen.sample_line_idxs()
         counter += 1
         while indices:
-            datum = utils.hstack_line_crops(
-                [iam_synth.line_crops[i] for i in indices]
-            )
-            labels = "\n".join([iam_synth.line_labels[i] for i in indices])
+            datum = utils.hstack_line_crops([line_crops[i] for i in indices])
+            labels = "\n".join([line_labels[i] for i in indices])
             if (
                 len(labels) <= OUTPUT_DIMS[0] - 2
                 and datum.height <= DIMS[1]
@@ -125,16 +163,21 @@ def get_args() -> dict:
     parser.add_argument(
         "--min_num_lines",
         type=int,
-        default=1,
-        help="Minimum number of lines in synthetic paragraph.",
+        default=metadata.MIN_NUM_LINES,
+        help=f"Minimum number of lines in synthetic paragraph; default is {metadata.MIN_NUM_LINES}",
     )
     parser.add_argument(
         "--max_num_lines",
         type=int,
-        default=13,
-        help="Maximum number of lines in synthetic paragraph.",
+        default=metadata.MAX_NUM_LINES,
+        help=f"Maximum number of lines in synthetic paragraph; default is {metadata.MAX_NUM_LINES}",
     )
     return vars(parser.parse_args())
+
+
+def main():
+    args = get_args()
+    synth_and_save_paragraphs(**args)
 
 
 if __name__ == "__main__":
