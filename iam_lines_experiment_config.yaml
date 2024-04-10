@@ -21,6 +21,7 @@ trainer:
     # - class_path: model_package.lit_models.callbacks.SetLoggerWatch
     # <end> hacky way to get wandb to watch grads in a thread safe way;
     - class_path: model_package.lit_models.callbacks.LogPredsCallback
+    - class_path: model_package.lit_models.callbacks.LogTrainPredsCallback
   fast_dev_run: false
   max_epochs: 4
   min_epochs: null

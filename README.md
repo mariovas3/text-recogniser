@@ -103,6 +103,8 @@ The project itself is fairly comprehensive and offers a lot of learning:
 	$ python training/run_experiment.py test --config emnistlines_experiment_config.yaml --data=EMNISTLines --data.batch_size=64 --ckpt_path='PathToCkpt'
 	```
 
+> **NOTE**: Since in overfit batches mode, the validation batch is not guaranteed to be the same as the training batch, I wrote a callback to log images and predictions for the training batch that we actually overfit. To check which epoch the table comes from, check the .json file of the table from the wandb UI in the `files/medai/table` section of the run.
+
 ## Quick sanity check runs:
 
 ```bash

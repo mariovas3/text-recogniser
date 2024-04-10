@@ -46,6 +46,9 @@ class LitResNetTransformer(L.LightningModule):
         self.padding_token = self.char_to_idx["<PAD>"]
         self.max_seq_length = max_seq_length
 
+        # for logging
+        self.training_step_outputs = []
+
         self.d_model = tf_dim
         # the output channels of the resnet should equal the model dim;
         assert resnet_config["out_channels"][-1] == self.d_model
@@ -161,8 +164,8 @@ class LitResNetTransformer(L.LightningModule):
         loss = F.cross_entropy(outs, y[:, 1:], reduction="mean")
         return outs, loss
 
-    def training_step(self, batch, batch_idx):
-        _, loss = self._get_outs_loss(batch)
+    def training_step(self, batch, batch_idx, dataloader_idx=0):
+        outs, loss = self._get_outs_loss(batch)
         self.log(
             "training/loss",
             loss.item(),
@@ -171,7 +174,25 @@ class LitResNetTransformer(L.LightningModule):
             on_step=True,
             prog_bar=True,
         )
+        # to make use of overfit_batches != 0 flag of L.Trainer
+        # and log preds of the batch we wish to overfit;
+        remainder = (
+            self.current_epoch + 1
+        ) % self.trainer.check_val_every_n_epoch
+        predicate = (
+            self.trainer.overfit_batches > 0
+            and self.global_rank == 0
+            and remainder == 0
+            and dataloader_idx == 0
+            and batch_idx == 0
+        )
+        if predicate:
+            self.training_step_outputs.append(outs.argmax(-2))
         return loss
+
+    def on_train_epoch_end(self):
+        if self.trainer.overfit_batches > 0 and self.training_step_outputs:
+            self.training_step_outputs.clear()
 
     def validation_step(self, batch, batch_idx):
         outs, loss = self._get_outs_loss(batch)
