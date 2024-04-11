@@ -1,5 +1,8 @@
-# Rewrite of the text-recogniser project of <a href="https://github.com/the-full-stack/fsdl-text-recognizer-2022-labs">fsdl</a>.
-*Given image input with handwritten text, infer the text and output the associated string.*
+# Building a text recogniser transformer-based model.
+
+*Given image input with handwritten text, infer the text and output the associated string - hence, a multi-modal model.*
+
+This project is based on the <a href="https://github.com/the-full-stack/fsdl-text-recognizer-2022-labs">fsdl</a> text recogniser project, while adding my own improvements both to the model architecture, as well as addressing some bugs and data issues.
 
 This repo aims to reproduce the text-recogniser project from fsdl while adding a few improvements over model architecture as well as practical "hacks" to reduce the cost (**monetary** and **tech debt**) of the project.
 

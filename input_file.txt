@@ -1,0 +1,3 @@
+data/downloaded/iam/iamdb/xml/k04-028.xml 'it may have fallen from' 'it may fallen from'
+data/downloaded/iam/iamdb/xml/k04-028.xml 'Lucullus, awaiting the' 'Lucullus, awaiting'
+data/downloaded/iam/iamdb/xml/k04-028.xml 'sword of the executioner' 'the sword of the executioner'
