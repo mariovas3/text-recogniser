@@ -134,7 +134,7 @@ class IAM:
         )
 
     @cachedproperty
-    def ids_by_split(self):
+    def ids_by_split(self) -> dict[str, set]:
         return {
             "train": self.train_ids,
             "val": self.validation_ids,

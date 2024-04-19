@@ -73,7 +73,7 @@ my_model_checkpoint:
   filename: null
   monitor: validation/loss
   verbose: false
-  save_last: null
+  save_last: true
   save_top_k: 1
   save_weights_only: false
   mode: min

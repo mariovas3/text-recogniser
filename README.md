@@ -56,6 +56,12 @@ The project itself is fairly comprehensive and offers a lot of learning:
 		resample=Image.BILINEAR
 	)
 	```
+* Found some poor annotations on the level of the IAM dataset. Inspect the default `k04-028.xml` file and its corresponding image. Some text annotations don't correspond to the handwritten-text. I fix this manually by running the following from the project's root dir:
+
+	```bash
+	bash replace_string.sh input_file.txt
+	```
+
 ### Notes on IAMParagraphs data:
 * The paragraph crop results from taking a crop from the first line region to the last line region in  the `line_regions_by_id` attribute.
 * Similarly to the IAMLines data, I resize the paragraph crops so I have 28 pixels of height per line:
@@ -85,7 +91,7 @@ The project itself is fairly comprehensive and offers a lot of learning:
 * The command to reproduce the results is:
 
 ```bash
-$ python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --data=IAMLines --trainer.overfit_batches=1 --trainer.max_epochs=300 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=20
+python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --data=IAMLines --trainer.overfit_batches=1 --trainer.max_epochs=300 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=20
 ```
 
 * The `overfit_batches=1` using the lightning `Trainer` seems to use a different validation batch than the training batch so I wrote a custom lightning `Callback` to log stuff about the training batch.
@@ -94,7 +100,7 @@ $ python training/run_experiment.py fit --config iam_lines_experiment_config.yam
 * Made it easy to select which dataset to train on via `LightningCLI`. The usage is e.g.,
 
 	```bash
-	$ python training/run_experiment.py fit --config CONFIG --data=IAMLines ...
+	python training/run_experiment.py fit --config CONFIG --data=IAMLines ...
 	```
 * Also tested `IAMParagraphs` and it works.
 
@@ -106,17 +112,17 @@ $ python training/run_experiment.py fit --config iam_lines_experiment_config.yam
 * Then run what you wanna run:
 
 	```bash
-	$ python training/run_experiment.py fit --config emnistlines_experiment_config.yaml --data=EMNISTLines --trainer.overfit_batches=1 --trainer.max_epochs=200 --trainer.check_val_every_n_epoch=50 --data.batch_size=64
+	python training/run_experiment.py fit --config emnistlines_experiment_config.yaml --data=EMNISTLines --trainer.overfit_batches=1 --trainer.max_epochs=200 --trainer.check_val_every_n_epoch=50 --data.batch_size=64
 	```
 * To e.g., continue the training for another 200 epochs, just set the `--trainer.max_epochs=400` and provide a `--ckpt_path` path to the model that has trained for 200 epochs like so:
 
 	```bash
-	$ python training/run_experiment.py fit --config emnistlines_experiment_config.yaml --data=EMNISTLines --trainer.overfit_batches=1 --trainer.max_epochs=400 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --ckpt_path='PathToCkpt'
+	python training/run_experiment.py fit --config emnistlines_experiment_config.yaml --data=EMNISTLines --trainer.overfit_batches=1 --trainer.max_epochs=400 --trainer.check_val_every_n_epoch=50 --data.batch_size=64 --ckpt_path='PathToCkpt'
 	```
 * To run the `test` subcommand, do:
 
 	```bash
-	$ python training/run_experiment.py test --config emnistlines_experiment_config.yaml --data=EMNISTLines --data.batch_size=64 --ckpt_path='PathToCkpt'
+	python training/run_experiment.py test --config emnistlines_experiment_config.yaml --data=EMNISTLines --data.batch_size=64 --ckpt_path='PathToCkpt'
 	```
 
 > **NOTE**: Since in overfit batches mode the validation batch is not guaranteed to be the same as the training batch, I wrote a callback to log images and predictions for the training batch that we actually overfit. To check which epoch the table comes from, check the `.json` file of the table from the wandb UI in the `files/medai/table` section of the run.
@@ -124,7 +130,7 @@ $ python training/run_experiment.py fit --config iam_lines_experiment_config.yam
 ## Quick sanity check runs:
 
 ```bash
-$ python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --data=IAMLines --trainer.limit_train_batches=5 --trainer.limit_val_batches=1 --trainer.max_epochs=20 --trainer.check_val_every_n_epoch=5 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=4 --data.num_workers=4 --trainer.strategy=ddp
+python training/run_experiment.py fit --config iam_lines_experiment_config.yaml --data=IAMLines --trainer.limit_train_batches=5 --trainer.limit_val_batches=1 --trainer.max_epochs=20 --trainer.check_val_every_n_epoch=5 --data.batch_size=64 --my_model_checkpoint.every_n_epochs=4 --data.num_workers=4 --trainer.strategy=ddp
 ```
 
 ## Google Drive API setup (for hosting data):

@@ -9,7 +9,7 @@ from PIL import Image
 import model_package.data.utils as utils
 import model_package.metadata.iam_lines as metadata
 from model_package.data.iam import IAM
-from model_package.data.lit_datamodule import BaseDataModule, mock_lit_dataset
+from model_package.data.lit_datamodule import BaseDataModule
 
 resize_crop = partial(
     utils.resize_crop,
@@ -189,7 +189,9 @@ def save_images_and_labels(crops, labels, split: str, dir_path: Path):
 def generate_line_crops_and_labels(iam: IAM, split: str):
     """Get cropped lines and their text labels."""
     crops, labels = [], []
-    for iam_id in iam.ids_by_split[split]:
+    # sort ids, so each time we save dataset in same order;
+    # otherwise using set for ids, doesn't guarantee same order.
+    for iam_id in sorted(iam.ids_by_split[split]):
         labels += iam.line_strings_by_id[iam_id]
         image = iam.load_image(iam_id)
         for region in iam.line_regions_by_id[iam_id]:
