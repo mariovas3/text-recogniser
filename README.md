@@ -2,14 +2,24 @@
 
 *Given image input with handwritten text, infer the text and output the associated string - hence, a multi-modal model.*
 
-This project is based on the <a href="https://github.com/the-full-stack/fsdl-text-recognizer-2022-labs">fsdl</a> text recogniser project, while adding my own improvements both to the model architecture, as well as addressing some bugs and data issues.
-
-This repo aims to reproduce the text-recogniser project from fsdl while adding a few improvements over model architecture as well as practical "hacks" to reduce the cost (**monetary** and **tech debt**) of the project.
+This project is based on the <a href="https://github.com/the-full-stack/fsdl-text-recognizer-2022-labs">fsdl</a> text recogniser project, while adding my own improvements to the model architecture, as well as addressing some bugs (data processing), data issues (iam-level bad annotations) and reducing tech debt (remove `Argparse` boilerplate in favour of `LightningCLI`).
 
 The project itself is fairly comprehensive and offers a lot of learning:
 * Distributed training with **PyTorch Lightning**
 * Data wrangling and data synthesis using the <a href="https://fki.tic.heia-fr.ch/databases/iam-handwriting-database">IAM</a> and <a href="https://www.nist.gov/itl/products-and-services/emnist-dataset">EMNIST</a> datasets.
 * Experiment tracking with **wandb**
+
+## Table of contents:
+* [My improvements over the fsdl project](#my-improvements-over-the-fsdl-project)
+* [Maintainer Notes](#maintainer-notes)
+* [Notes on IAM data](#notes-on-iam-data)
+	* [Notes on IAMLines data](#notes-on-iamlines-data)
+	* [Notes on IAMParagraphs data](#notes-on-iamparagraphs-data)
+* [Experiment visualisations](#progress)
+* [How to run experiments](#running-experiments)
+* [Quick sanity check runs](#quick-sanity-check-runs)
+* [Google Drive API setup](#google-drive-api-setup-for-hosting-data)
+
 
 ## My improvements over the fsdl project:
 * Removed a lot of argparse boilerplate in favour of `LightningCLI` and YAML config files.
