@@ -10,7 +10,7 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.WandbLogger
     init_args:
-      project: "IAMParagraphs"
+      project: "IAMOgAndSynthParagraphs"
       log_model: "all"
       name: "local_run"
   # get callbacks;
@@ -89,7 +89,7 @@ my_model_checkpoint:
   enable_version_counter: true
 ckpt_path: null
 data:
-  class_path: model_package.data.IAMParagraphs
+  class_path: model_package.data.IAMOgAndSynthParagraphs
   init_args:
     augment: false
     batch_size: 128
