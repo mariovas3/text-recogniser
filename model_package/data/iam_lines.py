@@ -156,19 +156,27 @@ def load_processed_crops_and_labels(split: str, dir_path: Path):
     return crops, labels
 
 
-def load_processed_line_labels(split: str, dir_path: Path):
+def load_processed_line_labels(split: str, dir_path: Path) -> list[str]:
     """Assumes labels stored in dir_path/split/_labels.json"""
-    with open(dir_path / split / "_labels.json") as file:
+    with open(dir_path / split / "_labels.json", "r") as file:
         labels = json.load(file)
     return labels
 
 
-def load_processed_line_crops(split: str, dir_path: Path):
+def load_processed_line_crops(
+    split: str, dir_path: Path, max_num_crops=None
+) -> list[Image.Image]:
     """Assumes crops saved as .png in dir_path/split"""
     crop_filenames = sorted(
         (dir_path / split).glob("*.png"),
         key=lambda filename: int(Path(filename).stem),
     )
+    if max_num_crops is not None:
+        # this functionality only used when loading
+        # synth paragraphs that were precomputed
+        # in the iam synth paragraphs module;
+        assert max_num_crops > 0
+        crop_filenames = crop_filenames[:max_num_crops]
     crops = [
         utils.read_image_pil(filename, grayscale=True)
         for filename in crop_filenames

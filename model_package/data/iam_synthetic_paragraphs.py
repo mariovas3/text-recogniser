@@ -62,14 +62,21 @@ class IAMSyntheticParagraphs(IAMParagraphs):
         )
 
     def _load_processed_crops_and_labels(self) -> None:
+        max_num_crops = None
         if self.use_precomputed:
             data_dir = metadata.SYNTH_PAR_DIR
+            max_num_crops = self.dataset_len
         else:
             data_dir = metadata.PROCESSED_DATA_DIR
         if self.line_crops is None:
-            self.line_crops = load_processed_line_crops("train", data_dir)
+            self.line_crops = load_processed_line_crops(
+                "train", data_dir, max_num_crops
+            )
         if self.line_labels is None:
             self.line_labels = load_processed_line_labels("train", data_dir)
+            if self.use_precomputed:
+                self.line_labels = self.line_labels[: self.dataset_len]
+        assert len(self.line_crops) == len(self.line_labels)
 
     def __repr__(self):
         ans = (
@@ -89,6 +96,12 @@ class IAMSyntheticParagraphs(IAMParagraphs):
             action="store_true",
             help="Whether to check if precomputed synth paragraphs available.",
         )
+        parser.add_argument(
+            "--dataset_len",
+            default=metadata.DATASET_LEN,
+            type=int,
+            help=f"Set length of synthetic paragraphs dataset. Default is {metadata.DATASET_LEN}",
+        )
 
 
 class IAMSyntheticParagraphsDataset(Dataset):
@@ -107,7 +120,8 @@ class IAMSyntheticParagraphsDataset(Dataset):
     ):
         super().__init__()
         assert len(line_crops) == len(line_labels)
-        print(f"len_line_crops: {len(line_labels)}")
+        if use_precomputed:
+            print(f"synth para dataset len: {len(line_labels)}")
         self.line_crops = line_crops
         self.line_labels = line_labels
         self.ids = list(range(len(self.line_labels)))

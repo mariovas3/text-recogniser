@@ -20,6 +20,7 @@ def _is_synth_saved():
             )
         except:
             return False
+        print(f"{counts} synth paragraphs found...")
         return counts > 0
     return False
 
@@ -123,7 +124,7 @@ def get_paragraphs_and_labels(args, line_crops, line_labels):
     while len(paragraphs) < size and counter < max_iter:
         indices = line_idx_gen.sample_line_idxs()
         counter += 1
-        while indices:
+        while len(indices) >= min_num_lines:
             datum = utils.hstack_line_crops([line_crops[i] for i in indices])
             labels = "\n".join([line_labels[i] for i in indices])
             if (
@@ -133,7 +134,7 @@ def get_paragraphs_and_labels(args, line_crops, line_labels):
             ):
                 break
             indices = indices[:-1]
-        if not indices:
+        if not indices or len(indices) < min_num_lines:
             invalid_count += 1
             line_idx_gen.num_lines_ptr -= 1
             continue

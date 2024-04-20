@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 # to root dir;
@@ -7,9 +8,22 @@ IAM_PLOTS = TESTING_OUTPUTS_DIR / "iam" / "plots"
 import time
 
 import matplotlib.pyplot as plt
+import numpy as np
 from PIL import Image
 
 from model_package.data.iam import IAM
+
+
+def check_line_count_dist(labels_path):
+    with open(labels_path, "r") as file:
+        labels = json.load(file)
+    counts = [label.count("\n") + 1 for label in labels]
+    counts = [_.count("\n") + 1 for _ in labels]
+    xs, ys = np.unique(counts, return_counts=True)
+    plt.bar(xs, ys)
+    plt.xticks(xs, xs)
+    plt.title("line count dist")
+    plt.show()
 
 
 def test_plot_para(data_batch, batch_size, idx_to_char):
